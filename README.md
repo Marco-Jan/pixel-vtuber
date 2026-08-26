@@ -1308,8 +1308,8 @@ Zeile im Panel stimmt in jedem Zwischenstand.
 2. git commit -m "..."          ← die Version steht in der Commit-Nachricht
 3. git tag v1.1.0
 4. git push && git push --tags
-5. npm run dist && npm run dist:setup
-6. beide .exe an den GitHub-Release hängen
+5. npm run dist
+6. die .exe an den GitHub-Release hängen
 ```
 
 Die Commit-Nachricht nennt die Version in der ersten Zeile, etwa:
@@ -1329,8 +1329,7 @@ Erhöht wird, sobald etwas herausgeht.
 ### Ein Release bauen
 
 ```
-npm run dist         → dist/PixelVTuber-<version>-portable.exe
-npm run dist:setup   → dist/PixelVTuber-<version>-setup.exe
+npm run dist   → dist/PixelVTuber-<version>-setup.exe
 ```
 
 Der Dateiname trägt die Version, es können also mehrere nebeneinander liegen.
@@ -1352,12 +1351,17 @@ sie angekündigt bekommt, klickt durch.
 ## Als .exe bauen
 
 ```
-npm run dist         → dist/PixelVTuber-1.0.0-portable.exe   (eine Datei, kein Setup)
-npm run dist:setup   → dist/PixelVTuber-1.0.0-setup.exe      (Installer mit Verknüpfungen)
+npm run dist   → dist/PixelVTuber-<version>-setup.exe
 ```
 
-Beides enthält Electron, Sprites und alles Weitere — auf dem Zielrechner muss nichts
+Ein Installer mit Verknüpfungen im Startmenü und auf dem Schreibtisch. Er enthält
+Electron, die Testfigur und alles Weitere — auf dem Zielrechner muss nichts
 installiert sein. Rund 80 MB, das ist bei Electron normal.
+
+**Es gab einmal eine zweite, tragbare Fassung ohne Setup.** Sie ist weggefallen: Zwei
+Dateien an einem Release sind zwei Fragen für jeden, der herunterlädt — und die
+häufigere Antwort war ohnehin der Installer. Wer die App ohne Installation
+ausprobieren will, klont das Repo und startet sie mit `npm start`.
 
 Die .exe trägt Icon, Produktnamen, Hersteller, Version und Copyright — nachzusehen
 über Rechtsklick → Eigenschaften → Details. Das Icon entsteht aus

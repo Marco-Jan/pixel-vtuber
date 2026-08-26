@@ -5,8 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "npm run build && electron-builder --win portable",
-    "dist:setup": "npm run build && electron-builder --win nsis",
+    "dist": "npm run build && electron-builder --win",
     "build": "esbuild renderer/three-view.js --bundle --format=iife --outfile=renderer/three-bundle.js --legal-comments=none",
     "postinstall": "npm run build"
   },
@@ -36,13 +35,9 @@
     ],
     "win": {
       "target": [
-        "portable",
         "nsis"
       ],
       "icon": "build/icon.ico"
-    },
-    "portable": {
-      "artifactName": "PixelVTuber-${version}-portable.exe"
     },
     "nsis": {
       "artifactName": "PixelVTuber-${version}-setup.exe",

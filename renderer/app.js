@@ -45,11 +45,21 @@ const DEFAULT_ROLES = {
 // `ms` in die zuletzt gehaltene Pose zurückfällt. Winken und Herz sind deshalb
 // keine Sonderfälle, sondern einfach Posen mit hold:false — und eine weitere
 // Geste anzulegen kostet keinen Code, sondern einen Klick im Panel.
+// Zwei beim ersten Start, nicht vier.
+//
+// Eine haltende Grundhaltung und eine Geste — das Wenigste, an dem der
+// Unterschied zu sehen ist, um den es in diesem Abschnitt geht: Die eine bleibt
+// stehen, die andere läuft ab und fällt zurück. Vier Knöpfe zeigen davon nicht
+// mehr, sie füllen nur den Platz, bevor jemand weiß, wofür er ihn braucht.
+//
+// Die Sprites für „Gestikulierend“ und „Herz“ liegen weiterhin bei; wer eine
+// dritte Pose anlegt, findet sie in der Auswahl.
+//
+// Gilt nur für eine frische Einrichtung. Wer die App schon benutzt, behält
+// seine Posen — beim Laden wird übernommen, was in der Datei steht.
 const DEFAULT_POSES = [
-  {id:'idle',  label:'Arme verschränkt', file:'demo_open.png',      hold:true,  ms:1500, hotkey:'Control+Alt+1'},
-  {id:'arms',  label:'Gestikulierend',   file:'demo_open_arms.png', hold:true,  ms:1500, hotkey:'Control+Alt+2'},
-  {id:'wave',  label:'Winken',           file:'demo_wave.png',      hold:false, ms:1600, hotkey:'Control+Alt+3', autoRate:50},
-  {id:'heart', label:'Herz',             file:'demo_heart.png',     hold:false, ms:1800, hotkey:'Control+Alt+4', autoRate:30}
+  {id:'idle',  label:'Arme verschränkt', file:'demo_open.png',  hold:true,  ms:1500, hotkey:'Control+Alt+1'},
+  {id:'wave',  label:'Winken',           file:'demo_wave.png',  hold:false, ms:1600, hotkey:'Control+Alt+2', autoRate:50}
 ];
 
 // Posen gehören zur Figur. Ohne Angabe ist die gemeint, die das Panel gerade
@@ -129,7 +139,10 @@ const AVATAR_DEFAULTS = {
   // halb so weit. Bei Pixelfiguren wirkt nur die Häufigkeit — ein Bild lässt sich
   // nicht halb zeigen.
   randomOn:true, randomRate:35, randomPower:70,
-  gesturePose:'arms',          // welche Pose die Automatik beim Reden zeigt
+  // Leer, solange es nur eine haltende Pose gibt: Die Automatik wechselt beim
+  // Reden auf eine *andere* Pose, und dafür braucht es eine zweite. Sobald
+  // jemand eine anlegt, wählt er sie hier.
+  gesturePose:'',
   breathAmp:12, breathRate:70, swayAmp:8, bounceAmp:22, loudLift:14
 };
 

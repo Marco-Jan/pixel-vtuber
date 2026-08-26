@@ -1,6 +1,6 @@
 {
   "name": "pixel-vtuber",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Sprite- und 3D-basierter VTuber-Avatar mit Lip Sync, Posen und KI-Co-Moderator",
   "main": "main.js",
   "scripts": {

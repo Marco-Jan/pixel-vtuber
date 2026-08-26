@@ -54,3 +54,8 @@ MEMO-lizenzierung.md
 SCHOERK.md
 charakter*.md
 *-charakter.md
+
+# Python-Zwischenstände. Entstehen, seit troll-posen.py das Mundskript über
+# importlib lädt — Blender legt sie neben dem Skript ab.
+__pycache__/
+*.pyc

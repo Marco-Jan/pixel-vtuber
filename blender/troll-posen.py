@@ -83,6 +83,33 @@ for ob in list(bpy.data.objects):
 if "Icosphere" in bpy.data.objects:
     bpy.data.objects.remove(bpy.data.objects["Icosphere"], do_unlink=True)
 
+# --- Mund neu rechnen ---------------------------------------------------------
+#
+# Der Shape Key `mundOffen` aus der Quelldatei verschob die halbe untere
+# Gesichtshaelfte geradlinig nach unten - die Oberlippe sackte mit, und quer
+# ueber das Gesicht lag ein waagrechtes Brett. troll-mund.py rechnet ihn statt
+# dessen als Lippenbewegung: Unterlippe faellt, Oberlippe hebt sich, das Kinn
+# bleibt stehen.
+#
+# Hier und nicht in der Quelldatei, damit die unangetastet bleibt: Sie einmal
+# neu zu schreiben hiesse, ihre Textur ein weiteres Mal durch die Kompression
+# zu schicken. So sind es sieben Zahlen im Kopf von troll-mund.py, an denen man
+# dreht und diesen Bau erneut laufen laesst.
+#
+# Ueber importlib und nicht ueber `import`: Der Dateiname hat einen Bindestrich,
+# und den nimmt die Import-Anweisung nicht.
+import importlib.util
+_mund_datei = os.path.join(HIER, 'troll-mund.py')
+if os.path.exists(_mund_datei):
+    _spec = importlib.util.spec_from_file_location('troll_mund', _mund_datei)
+    _mund = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mund)
+    _mund.baue()
+else:
+    # Fehlt das Skript, bleibt der alte Key stehen. Das ist haesslich, aber
+    # brauchbar - ein Abbruch mitten im Bau waere schlechter.
+    print('[mund] troll-mund.py nicht gefunden - alter Shape Key bleibt')
+
 # --- Drehachsen ausrechnen ----------------------------------------------------
 OBEN  = Vector((0, 0, 1))
 UNTEN = Vector((0, 0, -1))

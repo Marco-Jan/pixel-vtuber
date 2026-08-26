@@ -1,0 +1,138 @@
+# Pixel VTuber — Lizenz
+
+Copyright © 2026 Baloou. Alle Rechte vorbehalten, soweit sie hier nicht
+ausdrücklich eingeräumt werden.
+
+Maßgeblich ist die deutsche Fassung. Die englische Übersetzung weiter unten
+dient dem Verständnis; bei Abweichungen gilt der deutsche Text.
+
+**Dies ist keine Open-Source-Lizenz** im Sinne der Open Source Initiative, weil
+sie den Verkauf einschränkt. Der Quelltext ist einsehbar, veränderbar und darf
+weitergegeben werden — nur nicht gegen Geld.
+
+---
+
+## 1. Was du darfst
+
+**Benutzen — uneingeschränkt.** Du darfst die Software für jeden Zweck
+einsetzen, privat wie beruflich. Ausdrücklich eingeschlossen ist die Nutzung in
+Streams, Videos und Auftritten, mit denen du Geld verdienst: Abonnements, Bits,
+Spenden, Werbung, Sponsoring, Auftragsarbeiten. Was du mit Hilfe der Software
+erstellst, gehört dir, und du darfst es verkaufen.
+
+**Verändern.** Du darfst den Quelltext lesen, ändern und daraus eigene Fassungen
+bauen.
+
+**Weitergeben — kostenlos.** Du darfst die Software und eigene Fassungen davon
+weitergeben, wenn alle vier Bedingungen erfüllt sind:
+
+1. **Ohne Gegenleistung.** Kein Kaufpreis, keine Gebühr, kein Abonnement, keine
+   Bezahlschranke, keine Kopplung an eine kostenpflichtige Leistung. Die
+   Erstattung reiner Datenträgerkosten ist zulässig.
+2. **Mit Herkunftsangabe.** Name des Urhebers und ein Verweis auf das
+   Ursprungsprojekt bleiben erhalten und sind gut auffindbar.
+3. **Mit dieser Lizenz.** Dieser Text liegt vollständig bei, und dein Empfänger
+   erhält dieselben Rechte und dieselben Schranken.
+4. **Änderungen kenntlich.** Hast du etwas verändert, steht das erkennbar dabei,
+   damit niemand deine Fassung für das Original hält.
+
+## 2. Was du nicht darfst
+
+**Verkaufen.** Du darfst die Software oder eine daraus abgeleitete Fassung nicht
+gegen Entgelt weitergeben, vermieten, verleasen, unterlizenzieren oder als Teil
+eines kostenpflichtigen Produkts, Pakets oder Dienstes anbieten. Ebenso wenig
+darfst du sie hinter eine Bezahlschranke stellen oder den Zugang davon abhängig
+machen, dass jemand zahlt, Mitglied wird oder ein Abonnement abschließt.
+
+Das gilt unabhängig davon, wie das Entgelt genannt wird.
+
+## 3. Vorbehalt des Urhebers
+
+Der Urheber bleibt Inhaber aller Rechte und darf die Software jederzeit selbst
+verkaufen, anders lizenzieren oder Dritten gegen Entgelt Rechte einräumen, die
+über diese Lizenz hinausgehen. Brauchst du mehr, als hier steht, frag ihn.
+
+## 4. Name und Kennzeichen
+
+Diese Lizenz räumt keine Rechte am Namen „Pixel VTuber", am Symbol oder an
+sonstigen Kennzeichen ein. Eine veränderte Fassung darf nicht so auftreten, als
+sei sie das Original oder werde vom Urheber unterstützt.
+
+## 5. Fremde Bestandteile
+
+Die Software wird zusammen mit Werken Dritter ausgeliefert, die eigenen
+Lizenzen unterliegen — unter anderem Electron, Chromium, Node.js
+(`LICENSE.electron.txt`, `LICENSES.chromium.html` im Programmordner) sowie
+three.js und das Anthropic-SDK, beide MIT. Für diese Bestandteile gelten ihre
+eigenen Lizenzen und nicht die vorliegende.
+
+## 6. Keine Gewährleistung
+
+Die Software wird bereitgestellt, wie sie ist, ohne Gewähr für Eignung,
+Fehlerfreiheit oder Verfügbarkeit. Eine Haftung des Urhebers ist ausgeschlossen,
+soweit gesetzlich zulässig; unberührt bleibt die Haftung für Vorsatz und grobe
+Fahrlässigkeit sowie für Schäden aus der Verletzung des Lebens, des Körpers oder
+der Gesundheit.
+
+## 7. Ende der Rechte
+
+Verstößt du gegen diese Lizenz, enden die hier eingeräumten Rechte
+automatisch. Sie leben wieder auf, wenn du den Verstoß innerhalb von 30 Tagen
+nach Kenntnis abstellst und er nicht wiederholt auftritt.
+
+## 8. Recht und Salvatorisches
+
+Es gilt deutsches Recht. Ist eine Bestimmung unwirksam, bleiben die übrigen
+wirksam; an die Stelle der unwirksamen tritt, was ihrem wirtschaftlichen Zweck
+am nächsten kommt.
+
+---
+
+# English translation (non-binding)
+
+The German text above is authoritative. This translation is provided for
+convenience only.
+
+**This is not an open-source license** as defined by the Open Source Initiative,
+because it restricts sale. The source is readable, modifiable and
+redistributable — just not for money.
+
+**1. What you may do.** *Use it without restriction*, privately or
+professionally, explicitly including streams, videos and appearances you earn
+money from (subscriptions, bits, donations, advertising, sponsorship, commissioned
+work). Whatever you create with the software is yours and you may sell it.
+*Modify it.* *Redistribute it free of charge*, provided that: (1) you charge
+nothing — no purchase price, fee, subscription, paywall, or bundling with a paid
+offering (recovering plain media costs is fine); (2) attribution to the author
+and a link to the original project remain and are easy to find; (3) this license
+travels with it and your recipient gets the same rights and the same limits;
+(4) modifications are clearly marked as such.
+
+**2. What you may not do.** Sell, rent, lease, sublicense, or include the
+software or any derivative in a paid product, bundle or service; or place it
+behind a paywall or condition access on payment, membership or subscription —
+whatever the charge is called.
+
+**3. Author's reservation.** The author retains all rights and may sell the
+software, license it differently, or grant third parties rights beyond this
+license, at any time. If you need more than this license grants, ask.
+
+**4. Name and marks.** No rights are granted in the name "Pixel VTuber", the
+icon, or other marks. A modified version must not present itself as the original
+or as endorsed by the author.
+
+**5. Third-party components.** Shipped alongside works of others under their own
+licenses — including Electron, Chromium, Node.js (`LICENSE.electron.txt`,
+`LICENSES.chromium.html` in the program folder), three.js and the Anthropic SDK
+(both MIT). Those components are governed by their own licenses, not this one.
+
+**6. No warranty.** Provided as is, without warranty of fitness, correctness or
+availability. Liability is excluded to the extent permitted by law; liability for
+intent, gross negligence, and injury to life, body or health remains.
+
+**7. Termination.** Rights granted here end automatically on breach, and are
+reinstated if you cure the breach within 30 days of becoming aware of it and do
+not repeat it.
+
+**8. Law.** German law applies. If any provision is invalid, the rest remain in
+force.

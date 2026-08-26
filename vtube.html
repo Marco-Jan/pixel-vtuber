@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Pixel VTuber Prototyp</title>
+<style>
+  :root{
+    --bg:#0e0f13;
+    --panel:#1a1c22;
+    --accent:#f7931e;
+    --accent2:#3ddc97;
+    --text:#e8e8ea;
+    --danger:#ff5c5c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', system-ui, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+  }
+  #stage-wrap{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      linear-gradient(45deg,#111 25%,transparent 25%),
+      linear-gradient(-45deg,#111 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#111 75%),
+      linear-gradient(-45deg,transparent 75%,#111 75%);
+    background-size:20px 20px;
+    background-position:0 0,0 10px,10px -10px,-10px 0px;
+    background-color:#181818;
+    position:relative;
+    width:100%;
+    height:100%;
+  }
+  #canvas{
+    image-rendering:pixelated;
+    box-shadow:0 0 40px rgba(0,0,0,.6);
+    background:transparent;
+    cursor:crosshair;
+  }
+  #obsModeBtn{
+    position:absolute;
+    top:12px;
+    right:12px;
+    background:rgba(20,21,26,.85);
+    border:1px solid #35373f;
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    z-index:10;
+  }
+  #obsModeBtn:hover{border-color:var(--accent);}
+  body.obs-mode #panel{display:none;}
+  body.obs-mode #obsModeBtn{
+    opacity:.15;
+  }
+  body.obs-mode #obsModeBtn:hover{opacity:1;}
+  body.obs-mode #stage-wrap{
+    background:transparent;
+  }
+  body.obs-mode #canvas{
+    box-shadow:none;
+    cursor:default;
+  }
+  #panel{
+    width:320px;
+    background:var(--panel);
+    padding:18px;
+    overflow-y:auto;
+    border-left:1px solid #2a2d35;
+  }
+  h1{
+    font-size:16px;
+    margin:0 0 4px;
+    color:var(--accent);
+    letter-spacing:.5px;
+  }
+  h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:#9a9ba3;
+    margin:20px 0 8px;
+    border-bottom:1px solid #2a2d35;
+    padding-bottom:6px;
+  }
+  p.hint{
+    font-size:12px;
+    color:#8b8c93;
+    line-height:1.5;
+    margin:4px 0 10px;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin:8px 0;
+    font-size:13px;
+  }
+  .row label{flex:1;}
+  input[type=range]{
+    flex:1.2;
+    accent-color:var(--accent);
+  }
+  input[type=checkbox]{
+    accent-color:var(--accent);
+    width:16px;
+    height:16px;
+  }
+  input[type=file]{
+    width:100%;
+    font-size:12px;
+    color:var(--text);
+  }
+  button{
+    background:#25272e;
+    border:1px solid #35373f;
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+    width:100%;
+    margin-top:6px;
+    transition:.15s;
+  }
+  button:hover{background:#2f323b; border-color:var(--accent);}
+  button.primary{background:var(--accent); color:#20140a; border-color:var(--accent); font-weight:600;}
+  button.primary:hover{filter:brightness(1.1);}
+  button.stop{background:var(--danger); border-color:var(--danger); color:#2a0a0a; font-weight:600;}
+  .mode-toggle{
+    display:flex;
+    gap:6px;
+    margin:6px 0 2px;
+  }
+  .mode-toggle button{margin:0;}
+  .mode-toggle button.active{background:var(--accent2); color:#04241a; border-color:var(--accent2);}
+  #vol-bar-wrap{
+    height:10px;
+    background:#0e0f13;
+    border-radius:5px;
+    overflow:hidden;
+    margin-top:6px;
+    border:1px solid #2a2d35;
+  }
+  #vol-bar{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    transition:width .05s linear;
+  }
+  code{
+    background:#0e0f13;
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:11px;
+  }
+  .status{
+    font-size:11px;
+    color:#7c7d85;
+    margin-top:4px;
+  }
+  .status.ok{color:var(--accent2);}
+</style>
+</head>
+<body>
+
+<div id="stage-wrap">
+  <canvas id="canvas" width="600" height="900"></canvas>
+  <button id="obsModeBtn" title="Panel ausblenden für sauberen OBS-Look">👁 OBS-Modus</button>
+</div>
+
+<div id="panel">
+  <h1>🎮 Pixel VTuber Prototyp</h1>
+  <p class="hint">Erst Bild laden, dann Augen/Mund-Boxen kalibrieren, dann Webcam starten — deine echten Augen und dein echter Mund werden per Gesichtstracking in die Boxen eingesetzt. Ohne Webcam bleiben die gezeichneten Sprite-Formen aktiv.</p>
+
+  <h2>1. Portrait</h2>
+  <input type="file" id="imgInput" accept="image/*">
+  <p class="hint">Lädt dein Bild als Basis. PNG mit transparentem Hintergrund empfohlen.</p>
+
+  <h2>2. Kalibrierung</h2>
+  <p class="hint">Klick auf die Buttons, dann klick+zieh im Bild um Augen bzw. Mund-Box zu setzen.</p>
+  <div class="mode-toggle">
+    <button id="modeEyes">👁 Augen setzen</button>
+    <button id="modeMouth">👄 Mund setzen</button>
+    <button id="modeNone" class="active">✔ Fertig</button>
+  </div>
+
+  <div class="row"><label>Augen-Box Breite</label><input type="range" id="eyeW" min="10" max="300" value="90"></div>
+  <div class="row"><label>Augen-Box Höhe</label><input type="range" id="eyeH" min="5" max="150" value="30"></div>
+  <div class="row"><label>Augenabstand</label><input type="range" id="eyeGap" min="0" max="100" value="30"></div>
+  <div class="row"><label>Mund-Box Breite</label><input type="range" id="mouthW" min="10" max="300" value="70"></div>
+  <div class="row"><label>Mund-Box Höhe</label><input type="range" id="mouthH" min="5" max="150" value="40"></div>
+  <div class="row"><label>Augen-Rotation</label><input type="range" id="eyeRot" min="-45" max="45" value="0"></div>
+  <div class="row"><label>Mund-Rotation</label><input type="range" id="mouthRot" min="-45" max="45" value="0"></div>
+
+  <h2>2c. Position feinjustieren</h2>
+  <p class="hint">Erst 👁/👄-Modus oben wählen, dann Pfeile klicken oder Pfeiltasten der Tastatur nutzen.</p>
+  <div class="row"><label>Schrittweite</label><input type="range" id="nudgeStep" min="1" max="10" value="2"></div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; max-width:150px; margin:8px auto;">
+    <div></div><button id="nudgeUp">▲</button><div></div>
+    <button id="nudgeLeft">◀</button><div style="text-align:center; font-size:10px; color:#7c7d85; align-self:center;">Move</div><button id="nudgeRight">▶</button>
+    <div></div><button id="nudgeDown">▼</button><div></div>
+  </div>
+
+  <h2>2b. Stil (nur ohne Webcam)</h2>
+  <div class="row"><label>Augen-Stil</label>
+    <select id="eyeStyle" style="flex:1.2; background:#0e0f13; color:#e8e8ea; border:1px solid #2a2d35; border-radius:4px; padding:4px;">
+      <option value="round">Rund (Anime-ish)</option>
+      <option value="dot">Simple Dots</option>
+      <option value="line">Halbrund / Linie</option>
+      <option value="wide">Breit, eckig</option>
+      <option value="retro8bit">8-Bit Block (chunky)</option>
+      <option value="visor">Visor-Streifen (Robot)</option>
+      <option value="kawaii">Kawaii ^_^ Bogen</option>
+      <option value="painted">Gemalt / Detailliert (weicher Blink)</option>
+    </select>
+  </div>
+  <div class="row"><label>Mund-Stil</label>
+    <select id="mouthStyle" style="flex:1.2; background:#0e0f13; color:#e8e8ea; border:1px solid #2a2d35; border-radius:4px; padding:4px;">
+      <option value="round">Rund / oval</option>
+      <option value="rect">Eckig / Retro</option>
+      <option value="smile">Lächel-Kurve</option>
+      <option value="fang">Eckig mit Zähnen</option>
+      <option value="pixelgrin">8-Bit Grinsen (Zahn-Notches)</option>
+      <option value="flatline">Flach / Neutral (chunky)</option>
+      <option value="stepblock">Stufen-Block (2-Frame-Sprite-Look)</option>
+    </select>
+  </div>
+
+  <h2>3. Webcam — echte Augen &amp; Mund</h2>
+  <p class="hint">Gesichtstracking schneidet deine echten Augen und deinen echten Mund aus dem Webcam-Bild und setzt sie in die kalibrierten Boxen. Blinzeln und Lip Sync passieren dann von selbst.</p>
+  <button id="camBtn" class="primary">📷 Webcam starten</button>
+  <div class="status" id="camStatus">Webcam inaktiv</div>
+  <div class="row"><label>Spiegeln</label><input type="checkbox" id="camMirror" checked></div>
+  <p class="hint">An = du siehst dich wie im Spiegel. Aus, wenn Augen/Mund auf der falschen Seite landen.</p>
+
+  <div class="row"><label>Pixelgröße</label><input type="range" id="camPixel" min="1" max="12" value="4"></div>
+  <p class="hint">Rechnet den Ausschnitt runter und ohne Glättung wieder hoch — höher = gröbere Pixel, passt sich dem Pixelart-Look an.</p>
+  <div class="row"><label>Farbanpassung</label><input type="range" id="camMatch" min="0" max="100" value="70"></div>
+  <p class="hint">Zieht den Hautton des Webcam-Ausschnitts in Richtung der Farben rund um die Box im Portrait — gegen den „aufgeklebt“-Effekt.</p>
+  <div class="row"><label>Kantenweichheit</label><input type="range" id="camFeather" min="0" max="90" value="45"></div>
+  <p class="hint">Weicher ovaler Rand, damit der Ausschnitt ins Bild übergeht statt als Rechteck zu stehen.</p>
+  <div class="row"><label>Augen-Ausschnitt</label><input type="range" id="camEyePad" min="0" max="150" value="40"></div>
+  <div class="row"><label>Mund-Ausschnitt</label><input type="range" id="camMouthPad" min="0" max="150" value="30"></div>
+  <p class="hint">Wieviel Umgebung um Auge bzw. Mund mitgenommen wird. Mehr = weicherer Übergang, überdeckt aber mehr vom Portrait.</p>
+
+  <h2>4. Blinzeln (nur ohne Webcam)</h2>
+  <div class="row"><label>Intervall min (s)</label><input type="range" id="blinkMin" min="1" max="10" value="2" step="0.5"></div>
+  <div class="row"><label>Intervall max (s)</label><input type="range" id="blinkMax" min="1" max="15" value="6" step="0.5"></div>
+  <button id="testBlink">Test-Blink auslösen</button>
+
+  <h2>5. Lip Sync (Mikrofon, nur ohne Webcam)</h2>
+  <button id="micBtn" class="primary">🎙 Mikrofon starten</button>
+  <div id="vol-bar-wrap"><div id="vol-bar"></div></div>
+  <div class="row"><label>Schwelle (ab wann reagiert)</label><input type="range" id="threshold" min="0" max="50" value="8"></div>
+  <p class="hint">Alles unterhalb dieser Lautstärke wird ignoriert — Rauschsperre gegen Atmen, Tastaturklicks, Raumgeräusche.</p>
+  <div class="row"><label>Empfindlichkeit (wie stark)</label><input type="range" id="sensitivity" min="1" max="10" value="4"></div>
+  <p class="hint">Verstärkt die Reaktion oberhalb der Schwelle — höher = Mund geht bei gleicher Lautstärke weiter auf.</p>
+  <div class="row"><label>Glättung</label><input type="range" id="smoothing" min="0" max="95" value="60"></div>
+  <p class="hint">Mittelt die Werte über Zeit. Niedrig = reagiert sofort, kann zittern. Hoch = ruhiger, aber etwas verzögert.</p>
+  <div class="status" id="micStatus">Mikrofon inaktiv</div>
+
+  <h2>6. Export</h2>
+  <button id="copyConfig">Kalibrierung als JSON kopieren</button>
+  <button id="obsHint">OBS Hinweis anzeigen</button>
+  <p class="hint" id="obsInfo" style="display:none;">Diese Datei als <code>Browser Source</code> in OBS einbinden, URL mit <code>?obs=1</code> anhängen für den panelfreien Look. Webcam- und Mic-Zugriff in der Browser Source brauchen ggf. das Flag <code>--use-fake-ui-for-media-stream</code> unter „Benutzerdefinierte CEF-Argumente“. Das Gesichtstracking lädt beim ersten Start ca. 3 MB von einem CDN — danach cached der Browser, aber der erste Start braucht Internet.</p>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  let baseImg = null;
+  let imgDrawRect = {x:0, y:0, w:0, h:0}; // where image is drawn on canvas
+
+  // Calibration boxes, stored in IMAGE-SPACE (relative to natural image pixels)
+  let eyeBox = {x:0.34, y:0.22, w:0.32, h:0.07, r:0};   // normalized 0-1 relative to image, r in radians
+  let mouthBox = {x:0.38, y:0.42, w:0.24, h:0.07, r:0};
+
+  let mode = null; // 'eyes' | 'mouth' | null
+  let dragging = false;
+  let dragStart = null;
+
+  // ---- animation state ----
+  let blinkState = 0; // 0 open, 1 closing/closed
+  let blinkTimer = null;
+  let blinkAmount = 0; // 0..1 smoothed, for styles with a soft eyelid-close animation
+  let mouthOpenAmount = 0; // 0..1 smoothed
+
+  function scheduleBlink(){
+    const min = parseFloat(document.getElementById('blinkMin').value);
+    const max = parseFloat(document.getElementById('blinkMax').value);
+    const wait = (min + Math.random()*(max-min)) * 1000;
+    blinkTimer = setTimeout(() => {
+      doBlink();
+      scheduleBlink();
+    }, wait);
+  }
+
+  function doBlink(){
+    blinkState = 1;
+    setTimeout(() => { blinkState = 0; }, 120); // blink duration
+  }
+
+  document.getElementById('testBlink').onclick = doBlink;
+
+  // ---- OBS mode: hide the calibration panel for a clean overlay ----
+  const obsBtn = document.getElementById('obsModeBtn');
+  function setObsMode(on){
+    document.body.classList.toggle('obs-mode', on);
+  }
+  obsBtn.addEventListener('click', () => {
+    setObsMode(!document.body.classList.contains('obs-mode'));
+  });
+  // auto-enable if the file is opened with ?obs=1 (use this URL in OBS's Browser Source)
+  if(new URLSearchParams(location.search).has('obs')){
+    setObsMode(true);
+  }
+
+  // ---- persist calibration + settings across reloads (works for file:// too, since it's not the claude.ai sandbox) ----
+  const STORAGE_KEY = 'pixelVtuberConfig_v1';
+  function saveConfig(){
+    try{
+      const cfg = {
+        eyeBox, mouthBox,
+        eyeStyle: document.getElementById('eyeStyle').value,
+        mouthStyle: document.getElementById('mouthStyle').value,
+        eyeGap: document.getElementById('eyeGap').value,
+        blinkMin: document.getElementById('blinkMin').value,
+        blinkMax: document.getElementById('blinkMax').value,
+        threshold: document.getElementById('threshold').value,
+        sensitivity: document.getElementById('sensitivity').value,
+        smoothing: document.getElementById('smoothing').value,
+        camPixel: document.getElementById('camPixel').value,
+        camMatch: document.getElementById('camMatch').value,
+        camFeather: document.getElementById('camFeather').value,
+        camEyePad: document.getElementById('camEyePad').value,
+        camMouthPad: document.getElementById('camMouthPad').value,
+        camMirror: document.getElementById('camMirror').checked,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    }catch(e){ /* localStorage may be unavailable in some contexts — fail silently */ }
+  }
+  function loadConfig(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const cfg = JSON.parse(raw);
+      if(cfg.eyeBox) eyeBox = cfg.eyeBox;
+      if(cfg.mouthBox) mouthBox = cfg.mouthBox;
+      if(cfg.eyeStyle) document.getElementById('eyeStyle').value = cfg.eyeStyle;
+      if(cfg.mouthStyle) document.getElementById('mouthStyle').value = cfg.mouthStyle;
+      if(cfg.eyeGap) document.getElementById('eyeGap').value = cfg.eyeGap;
+      if(cfg.blinkMin) document.getElementById('blinkMin').value = cfg.blinkMin;
+      if(cfg.blinkMax) document.getElementById('blinkMax').value = cfg.blinkMax;
+      if(cfg.threshold) document.getElementById('threshold').value = cfg.threshold;
+      if(cfg.sensitivity) document.getElementById('sensitivity').value = cfg.sensitivity;
+      if(cfg.smoothing) document.getElementById('smoothing').value = cfg.smoothing;
+      ['camPixel','camMatch','camFeather','camEyePad','camMouthPad'].forEach(id => {
+        if(cfg[id] !== undefined) document.getElementById(id).value = cfg[id];
+      });
+      if(cfg.camMirror !== undefined) document.getElementById('camMirror').checked = cfg.camMirror;
+    }catch(e){ /* ignore malformed/missing config */ }
+  }
+  loadConfig();
+  // save on any relevant control change, and after drag/nudge calibration
+  ['eyeStyle','mouthStyle','eyeGap','blinkMin','blinkMax','threshold','sensitivity','smoothing',
+   'camPixel','camMatch','camFeather','camEyePad','camMouthPad','camMirror']
+    .forEach(id => document.getElementById(id).addEventListener('input', saveConfig));
+  window.addEventListener('mouseup', saveConfig);
+  document.getElementById('imgInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      baseImg = img;
+      fitCanvasToImage();
+      draw();
+    };
+    img.src = url;
+  });
+
+  function fitCanvasToImage(){
+    if(!baseImg) return;
+    const maxW = 600, maxH = 900;
+    let ratio = Math.min(maxW/baseImg.naturalWidth, maxH/baseImg.naturalHeight);
+    const w = baseImg.naturalWidth * ratio;
+    const h = baseImg.naturalHeight * ratio;
+    canvas.width = w;
+    canvas.height = h;
+    imgDrawRect = {x:0, y:0, w:w, h:h};
+    buildPortraitCache();
+  }
+
+  // untouched copy of the portrait at canvas resolution — needed to sample the
+  // original skin tones around the boxes without picking up what we just drew
+  let portraitCtx = null;
+  function buildPortraitCache(){
+    if(!baseImg){ portraitCtx = null; return; }
+    const pc = document.createElement('canvas');
+    pc.width = canvas.width;
+    pc.height = canvas.height;
+    portraitCtx = pc.getContext('2d', {willReadFrequently:true});
+    portraitCtx.imageSmoothingEnabled = false;
+    portraitCtx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+    toneCache.clear();
+  }
+
+  // ---- calibration mode buttons ----
+  const modeButtons = {
+    eyes: document.getElementById('modeEyes'),
+    mouth: document.getElementById('modeMouth'),
+    none: document.getElementById('modeNone')
+  };
+  function setMode(m){
+    mode = m === 'none' ? null : m;
+    Object.entries(modeButtons).forEach(([k,btn]) => {
+      btn.classList.toggle('active', k===m);
+    });
+  }
+  modeButtons.eyes.onclick = () => setMode('eyes');
+  modeButtons.mouth.onclick = () => setMode('mouth');
+  modeButtons.none.onclick = () => setMode('none');
+
+  function nudge(dx, dy){
+    if(!mode) return;
+    const step = parseInt(document.getElementById('nudgeStep').value) / 1000; // normalized step
+    if(mode === 'eyes'){ eyeBox.x += dx*step; eyeBox.y += dy*step; }
+    if(mode === 'mouth'){ mouthBox.x += dx*step; mouthBox.y += dy*step; }
+    draw();
+    saveConfig();
+  }
+  document.getElementById('nudgeUp').onclick = () => nudge(0,-1);
+  document.getElementById('nudgeDown').onclick = () => nudge(0,1);
+  document.getElementById('nudgeLeft').onclick = () => nudge(-1,0);
+  document.getElementById('nudgeRight').onclick = () => nudge(1,0);
+
+  window.addEventListener('keydown', (e) => {
+    if(!mode) return;
+    const keys = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0]};
+    if(keys[e.key]){
+      e.preventDefault();
+      nudge(keys[e.key][0], keys[e.key][1]);
+    }
+  });
+
+  function canvasPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width/rect.width),
+      y: (e.clientY - rect.top) * (canvas.height/rect.height)
+    };
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    if(!mode || !baseImg) return;
+    dragging = true;
+    dragStart = canvasPos(e);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if(!dragging || !mode) return;
+    const p = canvasPos(e);
+    const x0 = Math.min(dragStart.x, p.x);
+    const y0 = Math.min(dragStart.y, p.y);
+    const w = Math.abs(p.x - dragStart.x);
+    const h = Math.abs(p.y - dragStart.y);
+    const nx = x0/canvas.width, ny = y0/canvas.height;
+    const nw = w/canvas.width, nh = h/canvas.height;
+    if(mode === 'eyes') eyeBox = {x:nx,y:ny,w:nw,h:nh,r:eyeBox.r};
+    if(mode === 'mouth') mouthBox = {x:nx,y:ny,w:nw,h:nh,r:mouthBox.r};
+    draw();
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  // sliders resize existing box (centered) for fine tuning
+  function boxFromSliders(box, wId, hId){
+    const w = parseInt(document.getElementById(wId).value)/canvas.width;
+    const h = parseInt(document.getElementById(hId).value)/canvas.height;
+    const cx = box.x + box.w/2, cy = box.y + box.h/2;
+    return {x:cx-w/2, y:cy-h/2, w, h, r:box.r};
+  }
+  ['eyeW','eyeH'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    eyeBox = boxFromSliders(eyeBox,'eyeW','eyeH'); draw();
+  }));
+  ['mouthW','mouthH'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    mouthBox = boxFromSliders(mouthBox,'mouthW','mouthH'); draw();
+  }));
+  document.getElementById('eyeRot').addEventListener('input', (e) => {
+    eyeBox.r = parseFloat(e.target.value) * Math.PI/180; draw(); saveConfig();
+  });
+  document.getElementById('eyeGap').addEventListener('input', draw);
+  document.getElementById('mouthRot').addEventListener('input', (e) => {
+    mouthBox.r = parseFloat(e.target.value) * Math.PI/180; draw(); saveConfig();
+  });
+
+  // ---- drawing ----
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(baseImg){
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(baseImg, 0,0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = '#2a2d35';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#666';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('Bild laden über Panel rechts →', 20, canvas.height/2);
+    }
+
+    // webcam takes over once a face is actually being tracked; until then the
+    // drawn sprite styles keep the avatar alive
+    if(webcamActive && lastLandmarks){
+      drawWebcamFace();
+    } else {
+      drawEyes();
+      drawMouth();
+    }
+
+    // calibration overlay guides
+    if(mode){
+      ctx.strokeStyle = mode==='eyes' ? '#3ddc97' : '#f7931e';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6,4]);
+      const b = mode==='eyes' ? eyeBox : mouthBox;
+      const pb = pixelBox(b);
+      ctx.save();
+      if(b.r){
+        const rcx = pb.x + pb.w/2, rcy = pb.y + pb.h/2;
+        ctx.translate(rcx, rcy); ctx.rotate(b.r); ctx.translate(-rcx, -rcy);
+      }
+      ctx.strokeRect(pb.x, pb.y, pb.w, pb.h);
+      ctx.restore();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // draw a filled rect but snapped to a pixel grid for a chunkier retro look
+  function pxRect(x,y,w,h,color, grid){
+    grid = grid || 3;
+    const gx = Math.round(x/grid)*grid;
+    const gy = Math.round(y/grid)*grid;
+    const gw = Math.max(grid, Math.round(w/grid)*grid);
+    const gh = Math.max(grid, Math.round(h/grid)*grid);
+    ctx.fillStyle = color;
+    ctx.fillRect(gx,gy,gw,gh);
+  }
+
+  // no covering patch anymore — original photo stays visible everywhere,
+  // the drawn eye/mouth shapes simply sit on top of it directly
+  function coverPatch(){ /* intentionally does nothing now */ }
+
+  // Detailed "painted" eye: almond sclera, shaded iris, brow — closes smoothly via blink 0..1
+  function drawPaintedEye(ex, ey, w, h, blink, isLeft){
+    const cxE = ex + w/2, cyE = ey + h/2;
+    const openH = Math.max(0.6, h*(1-blink*0.94)); // never fully collapse to 0 to avoid a hard seam
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ex - w*0.06, cyE - openH/2, w*1.12, openH);
+    ctx.clip();
+
+    // sclera
+    ctx.fillStyle = '#f7ecd9';
+    ctx.beginPath();
+    ctx.ellipse(cxE, cyE, w/2, h/2, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // iris with radial shading
+    const irisR = Math.min(w*0.32, h*0.48);
+    const grad = ctx.createRadialGradient(cxE, cyE, irisR*0.08, cxE, cyE, irisR);
+    grad.addColorStop(0, '#7a4e2e');
+    grad.addColorStop(0.65, '#4a2c18');
+    grad.addColorStop(1, '#1c0f08');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cxE, cyE, irisR, 0, Math.PI*2);
+    ctx.fill();
+
+    // pupil
+    ctx.fillStyle = '#0a0604';
+    ctx.beginPath();
+    ctx.arc(cxE, cyE, irisR*0.42, 0, Math.PI*2);
+    ctx.fill();
+
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(cxE - irisR*0.32, cyE - irisR*0.35, irisR*0.2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(cxE + irisR*0.25, cyE + irisR*0.3, irisR*0.1, 0, Math.PI*2);
+    ctx.fill();
+
+    // subtle under-eye shadow crease
+    ctx.strokeStyle = 'rgba(90,55,35,0.35)';
+    ctx.lineWidth = Math.max(1, h*0.05);
+    ctx.beginPath();
+    ctx.ellipse(cxE, cyE + h*0.22, w*0.42, h*0.3, 0, 0.15*Math.PI, 0.85*Math.PI);
+    ctx.stroke();
+
+    ctx.restore(); // end clip
+
+    // lash line — thickens slightly as the lid closes
+    ctx.strokeStyle = '#1e120b';
+    ctx.lineWidth = Math.max(2, h*(0.1 + blink*0.06));
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.ellipse(cxE, cyE - h*0.02, w/2, h/2, 0, Math.PI*1.02, Math.PI*1.98);
+    ctx.stroke();
+
+    // lower lash, subtler
+    ctx.strokeStyle = 'rgba(30,18,11,0.5)';
+    ctx.lineWidth = Math.max(1, h*0.04);
+    ctx.beginPath();
+    ctx.ellipse(cxE, cyE, w/2, h/2, 0, 0.05*Math.PI, 0.95*Math.PI);
+    ctx.stroke();
+
+    // eyebrow — slightly angled outward, mirrored per side
+    ctx.strokeStyle = '#241811';
+    ctx.lineWidth = Math.max(2, h*0.16);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    const browY = ey - h*0.5;
+    if(isLeft){
+      ctx.moveTo(ex - w*0.05, browY + h*0.15);
+      ctx.quadraticCurveTo(cxE, browY - h*0.15, ex + w*1.05, browY + h*0.05);
+    } else {
+      ctx.moveTo(ex - w*0.05, browY + h*0.05);
+      ctx.quadraticCurveTo(cxE, browY - h*0.15, ex + w*1.05, browY + h*0.15);
+    }
+    ctx.stroke();
+  }
+
+  // the two per-eye target rects inside the calibrated eye box — shared by the
+  // drawn sprite styles and the webcam compositing so both stay in sync
+  function eyeSlots(){
+    const b = pixelBox(eyeBox);
+    const singleW = b.w*0.38;
+    const gapFactor = parseInt(document.getElementById('eyeGap').value) / 100; // 0..1
+    const gapPx = gapFactor * b.w * 0.6; // max gap capped relative to box width
+    const totalW = singleW*2 + gapPx;
+    const startX = b.x + (b.w - totalW)/2; // keep centered in the calibrated box
+    return [0,1].map(i => ({x: startX + i*(singleW+gapPx), y: b.y, w: singleW, h: b.h}));
+  }
+
+  function drawEyes(){
+    const b = pixelBox(eyeBox);
+    coverPatch(b, 0.4, 0.08, eyeBox.r);
+
+    ctx.save();
+    if(eyeBox.r){
+      const rcx = b.x + b.w/2, rcy = b.y + b.h/2;
+      ctx.translate(rcx, rcy); ctx.rotate(eyeBox.r); ctx.translate(-rcx, -rcy);
+    }
+
+    const style = document.getElementById('eyeStyle').value;
+    const slots = eyeSlots();
+    const singleW = slots[0].w;
+    const grid = Math.max(2, Math.round(b.h/10));
+
+    for(let i=0;i<2;i++){
+      const ex = slots[i].x;
+      const cx = ex + singleW/2, cy = b.y + b.h/2;
+
+      if(style === 'painted'){
+        drawPaintedEye(ex, b.y, singleW, b.h, blinkAmount, i===0);
+        continue;
+      }
+
+      if(blinkState === 1){
+        pxRect(ex, cy - grid/2, singleW, grid*1.4, '#2a1a12', grid);
+        continue;
+      }
+
+      if(style === 'round'){
+        pxRect(ex, b.y, singleW, b.h, '#fdf6ec', grid);
+        const irisW = singleW*0.5, irisH = b.h*0.85;
+        pxRect(cx-irisW/2, b.y + b.h*0.08, irisW, irisH, '#3a2317', grid);
+        pxRect(cx-irisW*0.15, b.y + b.h*0.2, irisW*0.35, irisH*0.4, '#181010', grid);
+        pxRect(cx-irisW*0.05, b.y + b.h*0.15, irisW*0.15, irisH*0.15, '#ffffff', grid);
+        ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = Math.max(1,grid*0.6);
+        ctx.strokeRect(ex, b.y, singleW, b.h);
+      } else if(style === 'dot'){
+        const r = Math.min(singleW, b.h) * 0.4;
+        ctx.fillStyle = '#1a1210';
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cx - r*0.3, cy - r*0.3, r*0.25, 0, Math.PI*2); ctx.fill();
+      } else if(style === 'line'){
+        pxRect(ex, cy - grid, singleW, grid*3, '#fdf6ec', grid);
+        ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = Math.max(1,grid*0.6);
+        ctx.strokeRect(ex, cy-grid, singleW, grid*3);
+        pxRect(cx - singleW*0.18, cy - grid*0.6, singleW*0.36, grid*2.2, '#2a1810', grid);
+      } else if(style === 'wide'){
+        pxRect(ex, b.y + b.h*0.1, singleW, b.h*0.7, '#f5efe0', grid);
+        ctx.strokeStyle = '#141414'; ctx.lineWidth = Math.max(1,grid*0.7);
+        ctx.strokeRect(ex, b.y + b.h*0.1, singleW, b.h*0.7);
+        pxRect(cx - singleW*0.2, b.y + b.h*0.2, singleW*0.4, b.h*0.5, '#241610', grid);
+      } else if(style === 'retro8bit'){
+        // chunky low-res block eye: big grid, only 2-3 colors, hard edges
+        const bg = Math.max(4, Math.round(b.h/4));
+        pxRect(ex, b.y, singleW, b.h, '#0d0d0d', bg);
+        pxRect(ex + bg, b.y + bg, singleW - bg*2, b.h - bg*2, '#fdf6ec', bg);
+        pxRect(cx - bg*1.5, b.y + b.h*0.3, bg*3, b.h*0.4, '#0d0d0d', bg);
+      } else if(style === 'visor'){
+        // single glowing bar instead of separate eye shapes, like a robot visor
+        const barH = b.h*0.45;
+        const grad = ctx.createLinearGradient(ex, 0, ex+singleW, 0);
+        grad.addColorStop(0, '#0d0d0d');
+        grad.addColorStop(0.5, '#3ddc97');
+        grad.addColorStop(1, '#0d0d0d');
+        const gx = Math.round(ex/grid)*grid, gy = Math.round((cy-barH/2)/grid)*grid;
+        const gw = Math.max(grid, Math.round(singleW/grid)*grid), gh = Math.max(grid, Math.round(barH/grid)*grid);
+        ctx.fillStyle = grad;
+        ctx.fillRect(gx, gy, gw, gh);
+      } else if(style === 'kawaii'){
+        // happy closed-arc eyes, always "^_^" regardless of blink state (overrides blink visually)
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = Math.max(3, grid*1.3);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(cx, b.y + b.h*0.75, singleW*0.4, Math.PI*1.15, Math.PI*1.85, true);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawMouth(){
+    const b = pixelBox(mouthBox);
+    coverPatch(b, 0.25, 0.12, mouthBox.r);
+
+    ctx.save();
+    if(mouthBox.r){
+      const rcx = b.x + b.w/2, rcy = b.y + b.h/2;
+      ctx.translate(rcx, rcy); ctx.rotate(mouthBox.r); ctx.translate(-rcx, -rcy);
+    }
+
+    const style = document.getElementById('mouthStyle').value;
+    const openAmt = mouthOpenAmount;
+    const grid = Math.max(2, Math.round(b.h/10));
+    const mh = b.h * (0.12 + openAmt*1.1);
+    const my = b.y + (b.h - mh)/2;
+    const cx = b.x + b.w/2;
+
+    if(style === 'round'){
+      ctx.fillStyle = '#3a1414';
+      ctx.beginPath();
+      ctx.ellipse(cx, my+mh/2, b.w/2, mh/2, 0, 0, Math.PI*2);
+      ctx.fill();
+      if(openAmt > 0.15){
+        ctx.fillStyle = '#f2f2f2';
+        ctx.fillRect(b.x + b.w*0.1, my + mh*0.08, b.w*0.8, Math.max(2,mh*0.2));
+      }
+      if(openAmt > 0.4){
+        ctx.fillStyle = '#b4586a';
+        ctx.beginPath();
+        ctx.ellipse(cx, my+mh*0.75, b.w*0.32, mh*0.22, 0, 0, Math.PI*2);
+        ctx.fill();
+      }
+    } else if(style === 'rect'){
+      pxRect(b.x, my, b.w, mh, '#3a1414', grid);
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = Math.max(1,grid*0.6);
+      ctx.strokeRect(b.x, my, b.w, mh);
+      if(openAmt > 0.15) pxRect(b.x + b.w*0.08, my+mh*0.1, b.w*0.84, mh*0.2, '#f2f2f2', grid);
+    } else if(style === 'smile'){
+      ctx.strokeStyle = '#3a1414';
+      ctx.lineWidth = Math.max(3, grid*1.2 + openAmt*grid*3);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      const curve = b.h*0.3 + openAmt*b.h*0.6;
+      ctx.moveTo(b.x, b.y + b.h*0.3);
+      ctx.quadraticCurveTo(cx, b.y + b.h*0.3 + curve, b.x+b.w, b.y + b.h*0.3);
+      ctx.stroke();
+    } else if(style === 'fang'){
+      pxRect(b.x, my, b.w, mh, '#2a1010', grid);
+      ctx.strokeStyle = '#0f0f0f'; ctx.lineWidth = Math.max(1,grid*0.6);
+      ctx.strokeRect(b.x, my, b.w, mh);
+      if(openAmt > 0.1){
+        const toothW = b.w*0.12;
+        pxRect(b.x + b.w*0.15, my, toothW, Math.min(mh*0.5, grid*3), '#fdf6ec', grid);
+        pxRect(b.x + b.w*0.7, my, toothW, Math.min(mh*0.5, grid*3), '#fdf6ec', grid);
+      }
+    } else if(style === 'pixelgrin'){
+      // chunky grin: dark upper lip bar + row of tooth notches, height reacts to openAmt
+      const bigGrid = Math.max(4, Math.round(b.h/6));
+      pxRect(b.x, my, b.w, mh, '#241010', bigGrid);
+      ctx.strokeStyle = '#0a0a0a'; ctx.lineWidth = Math.max(1,bigGrid*0.5);
+      ctx.strokeRect(b.x, my, b.w, mh);
+      const teeth = 5;
+      const toothW = b.w/(teeth*1.6);
+      for(let i=0;i<teeth;i++){
+        const tx = b.x + b.w*0.06 + i*(toothW*1.5);
+        pxRect(tx, my + bigGrid*0.4, toothW, Math.max(bigGrid, mh*0.35), '#fdf6ec', bigGrid);
+      }
+    } else if(style === 'flatline'){
+      // neutral chunky flat mouth, barely reacts — for a calm/stoic vibe, small bump on talk
+      const bigGrid = Math.max(3, Math.round(b.h/5));
+      const lineH = bigGrid + openAmt*bigGrid*2;
+      const flatY = b.y + b.h/2 - lineH/2;
+      pxRect(b.x, flatY, b.w, lineH, '#2a1414', bigGrid);
+    } else if(style === 'stepblock'){
+      // classic 2-frame sprite talk: either fully closed (thin bar) or fully open (block), snapped hard — no smooth inbetween
+      const bigGrid = Math.max(4, Math.round(b.h/5));
+      const isOpen = openAmt > 0.25;
+      if(!isOpen){
+        pxRect(b.x, b.y + b.h/2 - bigGrid/2, b.w, bigGrid, '#241010', bigGrid);
+      } else {
+        pxRect(b.x, b.y, b.w, b.h, '#1a0a0a', bigGrid);
+        pxRect(b.x + bigGrid, b.y + bigGrid, b.w - bigGrid*2, b.h*0.3, '#fdf6ec', bigGrid);
+      }
+    }
+    ctx.restore();
+  }
+
+  function pixelBox(nb){
+    return {
+      x: nb.x*canvas.width,
+      y: nb.y*canvas.height,
+      w: nb.w*canvas.width,
+      h: nb.h*canvas.height
+    };
+  }
+
+  function sampleColor(x,y){
+    x = Math.max(0, Math.min(canvas.width-1, x));
+    y = Math.max(0, Math.min(canvas.height-1, y));
+    try{
+      const d = ctx.getImageData(x,y,1,1).data;
+      return `rgb(${d[0]},${d[1]},${d[2]})`;
+    }catch(e){
+      return '#e8a26b';
+    }
+  }
+
+  // ============================================================
+  //  WEBCAM: real eyes & mouth, tracked with MediaPipe FaceLandmarker
+  // ============================================================
+
+  // FaceMesh landmark indices — fixed by the MediaPipe model.
+  // Only corner points are used: they define both the tilt and a stable centre,
+  // and unlike lid/lip points they don't move when you blink, talk or smile.
+  const EYE_A_CORNERS = [33, 133];    // right eye: outer, inner
+  const EYE_B_CORNERS = [362, 263];   // left eye:  inner, outer
+  const MOUTH_CORNERS = [61, 291];
+  const FACE_SCALE_PTS = [33, 263];   // outer eye corners — the interocular baseline
+
+  // Crop width as a fraction of the interocular distance. These set the default
+  // framing; the "Ausschnitt" sliders scale them further.
+  const K_EYE = 0.42;
+  const K_MOUTH = 0.55;
+  // Push the mouth frame down a little so a dropping jaw stays inside it.
+  const MOUTH_BIAS_Y = 0.12;
+
+  const MP_VERSION = '0.10.14';
+  const MP_BUNDLE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/vision_bundle.mjs`;
+  const MP_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
+  const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = true;
+
+  let camStream = null;
+  let faceLandmarker = null;
+  let lastLandmarks = null;   // held between frames so a short tracking dropout doesn't flicker
+  let lastVideoTime = -1;
+  let webcamActive = false;
+  let faceSeen = false;
+  let srcCanvas = null, srcCtx = null;
+
+  const camBtn = document.getElementById('camBtn');
+  const camStatus = document.getElementById('camStatus');
+  const camMirror = document.getElementById('camMirror');
+
+  // The bundle is an ES module on a CDN. Direct dynamic import works when the page
+  // is served over http(s); from file:// some Chrome builds refuse it, so fall back
+  // to fetching the source and importing it as a blob.
+  async function loadVisionModule(){
+    try{
+      return await import(MP_BUNDLE);
+    }catch(e){
+      const res = await fetch(MP_BUNDLE);
+      if(!res.ok) throw new Error('CDN nicht erreichbar (' + res.status + ')');
+      const blobUrl = URL.createObjectURL(new Blob([await res.text()], {type:'text/javascript'}));
+      return await import(blobUrl);
+    }
+  }
+
+  async function initLandmarker(){
+    if(faceLandmarker) return;
+    camStatus.textContent = 'Lade Gesichtstracking (einmalig ~3 MB) …';
+    const vision = await loadVisionModule();
+    const fileset = await vision.FilesetResolver.forVisionTasks(MP_WASM);
+    const opts = {
+      baseOptions: {modelAssetPath: MP_MODEL, delegate: 'GPU'},
+      runningMode: 'VIDEO',
+      numFaces: 1
+    };
+    try{
+      faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, opts);
+    }catch(e){
+      // no WebGL in this context (happens in some OBS setups) — CPU still works
+      opts.baseOptions.delegate = 'CPU';
+      faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, opts);
+    }
+  }
+
+  camBtn.addEventListener('click', async () => {
+    if(camStream){ stopCam(); return; }
+    camBtn.disabled = true;
+    try{
+      camStatus.classList.remove('ok');
+      camStatus.textContent = 'Frage Webcam an …';
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: {width:{ideal:640}, height:{ideal:480}},
+        audio: false
+      });
+      video.srcObject = camStream;
+      await video.play();
+      await initLandmarker();
+
+      srcCanvas = document.createElement('canvas');
+      srcCanvas.width = video.videoWidth || 640;
+      srcCanvas.height = video.videoHeight || 480;
+      srcCtx = srcCanvas.getContext('2d', {willReadFrequently:true});
+
+      webcamActive = true;
+      faceSeen = false;
+      camBtn.textContent = '⏹ Webcam stoppen';
+      camBtn.classList.add('stop');
+      camStatus.textContent = 'Webcam aktiv — suche Gesicht …';
+    }catch(err){
+      stopCam();
+      camStatus.textContent = 'Fehler: ' + (err && err.message ? err.message : err);
+    }
+    camBtn.disabled = false;
+  });
+
+  function stopCam(){
+    if(camStream) camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+    video.srcObject = null;
+    webcamActive = false;
+    faceSeen = false;
+    lastLandmarks = null;
+    lastVideoTime = -1;
+    camBtn.textContent = '📷 Webcam starten';
+    camBtn.classList.remove('stop');
+    camStatus.classList.remove('ok');
+    camStatus.textContent = 'Webcam inaktiv';
+  }
+
+  // one grab + one detection per rendered frame
+  function updateWebcam(){
+    if(!webcamActive || !video.videoWidth) return;
+
+    srcCtx.save();
+    if(camMirror.checked){
+      srcCtx.translate(srcCanvas.width, 0);
+      srcCtx.scale(-1, 1);
+    }
+    srcCtx.drawImage(video, 0, 0, srcCanvas.width, srcCanvas.height);
+    srcCtx.restore();
+
+    if(video.currentTime === lastVideoTime) return; // no new camera frame yet
+    lastVideoTime = video.currentTime;
+    try{
+      const res = faceLandmarker.detectForVideo(video, performance.now());
+      if(res.faceLandmarks && res.faceLandmarks.length){
+        lastLandmarks = res.faceLandmarks[0];
+        if(!faceSeen){
+          faceSeen = true;
+          camStatus.textContent = 'Webcam aktiv — Gesicht erkannt';
+          camStatus.classList.add('ok');
+        }
+      }
+    }catch(e){ /* skip this frame, keep the previous landmarks */ }
+  }
+
+  // ---- geometry helpers (all in srcCanvas pixel space) ----
+
+  // Tilt of the line a→b, folded into (-90°, 90°].
+  //
+  // Mirroring the source reverses the x order of the two corner points, which
+  // would otherwise swing the angle by a full 180° and render every crop upside
+  // down. A head is never tilted anywhere near 90°, so folding the angle into the
+  // upright half-plane recovers the true tilt regardless of point order — and
+  // still keeps the sign, so a mirrored view tilts the other way, as a mirror should.
+  function angleBetween(a, b){
+    let angle = Math.atan2(b.y - a.y, b.x - a.x);
+    if(angle > Math.PI/2) angle -= Math.PI;
+    else if(angle <= -Math.PI/2) angle += Math.PI;
+    return angle;
+  }
+
+  function midpoint(a, b){
+    return {x: (a.x + b.x)/2, y: (a.y + b.y)/2};
+  }
+
+  function distance(a, b){
+    return Math.hypot(b.x - a.x, b.y - a.y);
+  }
+
+  // A crop frame that does NOT react to facial expression.
+  //
+  // Deriving the frame from the landmarks' bounding box would be self-defeating:
+  // opening the mouth grows the box, so fitting it into a fixed target would scale
+  // the crop down again and cancel out the very motion we want to show. Same for
+  // blinking, which would read as a zoom instead of an eyelid.
+  //
+  // So: width comes from `width` (a multiple of the interocular distance, which no
+  // expression changes), height follows the target box's aspect, and only the
+  // centre point tracks the face. Expression then happens *inside* a still frame.
+  // biasY shifts the centre along the frame's own "down" axis, in units of h.
+  function stableBox(centre, angle, width, aspect, biasY){
+    const w = Math.max(4, width);
+    const h = Math.max(4, w / aspect);
+    const off = (biasY || 0) * h;
+    return {
+      cx: centre.x - Math.sin(angle)*off,
+      cy: centre.y + Math.cos(angle)*off,
+      w, h, angle
+    };
+  }
+
+  // ---- colour matching ----
+
+  // average colour of the band just outside a rect — i.e. surrounding skin,
+  // not the eye/mouth itself
+  function borderAverage(c2d, x, y, w, h, expand){
+    if(!c2d) return null;
+    const ex = Math.round(x - w*expand), ey = Math.round(y - h*expand);
+    const ew = Math.round(w*(1 + expand*2)), eh = Math.round(h*(1 + expand*2));
+    const x0 = Math.max(0, ex), y0 = Math.max(0, ey);
+    const cw = Math.min(c2d.canvas.width - x0, ew - (x0 - ex));
+    const ch = Math.min(c2d.canvas.height - y0, eh - (y0 - ey));
+    if(cw < 4 || ch < 4) return null;
+
+    const data = c2d.getImageData(x0, y0, cw, ch).data;
+    const ix0 = x - x0, iy0 = y - y0, ix1 = ix0 + w, iy1 = iy0 + h;
+    let r = 0, g = 0, b = 0, n = 0;
+    for(let py = 0; py < ch; py += 2){
+      for(let px = 0; px < cw; px += 2){
+        if(px > ix0 && px < ix1 && py > iy0 && py < iy1) continue; // inside → skip
+        const o = (py*cw + px)*4;
+        if(data[o+3] < 128) continue; // transparent portrait background
+        r += data[o]; g += data[o+1]; b += data[o+2]; n++;
+      }
+    }
+    return n < 8 ? null : [r/n, g/n, b/n];
+  }
+
+  // portrait tones only change when a box moves, so cache them per region
+  const toneCache = new Map();
+  function portraitTone(key, rect){
+    if(!portraitCtx) return null;
+    const k = [rect.x, rect.y, rect.w, rect.h].map(v => Math.round(v)).join(',');
+    const hit = toneCache.get(key);
+    if(hit && hit.k === k) return hit.v;
+    const v = borderAverage(portraitCtx, rect.x, rect.y, rect.w, rect.h, 0.5);
+    toneCache.set(key, {k, v});
+    return v;
+  }
+
+  function applyColorMatch(c2d, w, h, from, to, amt){
+    if(!from || !to || amt <= 0) return;
+    const img = c2d.getImageData(0, 0, w, h);
+    const d = img.data;
+    const dr = (to[0]-from[0])*amt, dg = (to[1]-from[1])*amt, db = (to[2]-from[2])*amt;
+    for(let i = 0; i < d.length; i += 4){
+      if(d[i+3] === 0) continue;
+      d[i]   = Math.max(0, Math.min(255, d[i]   + dr));
+      d[i+1] = Math.max(0, Math.min(255, d[i+1] + dg));
+      d[i+2] = Math.max(0, Math.min(255, d[i+2] + db));
+    }
+    c2d.putImageData(img, 0, 0);
+  }
+
+  // ---- scratch canvases + feather masks, cached by size ----
+
+  const scratch = new Map();
+  function getScratch(key, w, h, readFrequently){
+    let s = scratch.get(key);
+    if(!s){
+      const c = document.createElement('canvas');
+      s = {canvas:c, ctx:c.getContext('2d', {willReadFrequently: !!readFrequently})};
+      scratch.set(key, s);
+    }
+    if(s.canvas.width !== w || s.canvas.height !== h){
+      s.canvas.width = w;
+      s.canvas.height = h;
+    }
+    return s;
+  }
+
+  const maskCache = new Map();
+  function featherMask(w, h, feather){
+    const key = w + 'x' + h + 'x' + feather.toFixed(2);
+    const hit = maskCache.get(key);
+    if(hit) return hit;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const m = c.getContext('2d');
+    m.translate(w/2, h/2);
+    m.scale(1, h/w);                     // circle → ellipse filling the rect
+    const g = m.createRadialGradient(0,0,0, 0,0, w/2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(Math.max(0, 1 - feather), 'rgba(255,255,255,1)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    m.fillStyle = g;
+    m.fillRect(-w/2, -w/2, w, w);        // in the scaled frame this covers the canvas
+    if(maskCache.size > 24) maskCache.clear();
+    maskCache.set(key, c);
+    return c;
+  }
+
+  // ---- compositing one tracked region into one calibrated box ----
+
+  function drawRegion(src, target, rot, o){
+    const tw = Math.max(8, Math.round(target.w));
+    const th = Math.max(8, Math.round(target.h));
+    const pw = Math.max(2, Math.round(tw / o.pixel));
+    const ph = Math.max(2, Math.round(th / o.pixel));
+
+    // 1. extract + de-rotate + downscale in a single transform
+    const pix = getScratch('pix-' + o.key, pw, ph, true); // read back for colour matching
+    const pctx = pix.ctx;
+    pctx.clearRect(0, 0, pw, ph);
+    pctx.save();
+    pctx.imageSmoothingEnabled = true;   // smooth on the way down = no aliasing
+    pctx.translate(pw/2, ph/2);
+    pctx.scale(pw/src.w, ph/src.h);
+    pctx.rotate(-src.angle);
+    pctx.translate(-src.cx, -src.cy);
+    pctx.drawImage(srcCanvas, 0, 0);
+    pctx.restore();
+
+    // 2. shift the crop's skin tone towards the portrait's
+    if(o.match > 0){
+      const from = borderAverage(srcCtx, src.cx - src.w/2, src.cy - src.h/2, src.w, src.h, 0.35);
+      applyColorMatch(pctx, pw, ph, from, o.tone, o.match);
+    }
+
+    // 3. blow it back up hard-edged, then punch the soft oval out of it
+    const reg = getScratch('reg-' + o.key, tw, th);
+    const rctx = reg.ctx;
+    rctx.globalCompositeOperation = 'source-over';
+    rctx.clearRect(0, 0, tw, th);
+    rctx.imageSmoothingEnabled = false;
+    rctx.drawImage(pix.canvas, 0, 0, tw, th);
+    rctx.globalCompositeOperation = 'destination-in';
+    rctx.drawImage(featherMask(tw, th, o.feather), 0, 0);
+    rctx.globalCompositeOperation = 'source-over';
+
+    ctx.save();
+    if(rot){
+      // pivot around the whole calibrated box, matching how drawEyes/drawMouth rotate
+      const p = o.pivot || {x: target.x + target.w/2, y: target.y + target.h/2};
+      ctx.translate(p.x, p.y); ctx.rotate(rot); ctx.translate(-p.x, -p.y);
+    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(reg.canvas, target.x, target.y, target.w, target.h);
+    ctx.restore();
+  }
+
+  function drawWebcamFace(){
+    const lms = lastLandmarks;
+    if(!lms || !srcCanvas) return;
+
+    const W = srcCanvas.width, H = srcCanvas.height;
+    const mirror = camMirror.checked;
+    const toPx = i => ({x: (mirror ? 1 - lms[i].x : lms[i].x) * W, y: lms[i].y * H});
+
+    const o = {
+      pixel:   parseInt(document.getElementById('camPixel').value),
+      match:   parseInt(document.getElementById('camMatch').value)/100,
+      feather: parseInt(document.getElementById('camFeather').value)/100
+    };
+    const eyePad = parseInt(document.getElementById('camEyePad').value)/100;
+    const mouthPad = parseInt(document.getElementById('camMouthPad').value)/100;
+
+    // everything is measured against the interocular distance, so the crops stay
+    // the same size no matter what the face is doing — only moving closer to the
+    // camera changes them, which is the one size change we do want
+    const faceScale = distance(toPx(FACE_SCALE_PTS[0]), toPx(FACE_SCALE_PTS[1]));
+    if(faceScale < 8) return; // face turned away or tracking garbage
+
+    const eb = pixelBox(eyeBox);
+    const eyePivot = {x: eb.x + eb.w/2, y: eb.y + eb.h/2};
+    const slots = eyeSlots();
+    const eyeW = faceScale * K_EYE * (1 + eyePad);
+
+    // build both eye frames, then assign them left→right on screen so the mirror
+    // toggle can't swap them
+    const eyeSrc = [EYE_A_CORNERS, EYE_B_CORNERS].map(c => {
+      const a = toPx(c[0]), b = toPx(c[1]);
+      return {centre: midpoint(a, b), angle: angleBetween(a, b)};
+    }).sort((p, q) => p.centre.x - q.centre.x);
+
+    for(let i = 0; i < 2; i++){
+      const t = slots[i];
+      if(t.w < 2 || t.h < 2) continue;
+      const src = stableBox(eyeSrc[i].centre, eyeSrc[i].angle, eyeW, t.w/t.h, 0);
+      drawRegion(src, t, eyeBox.r,
+        Object.assign({key:'eye'+i, tone: portraitTone('eye'+i, t), pivot: eyePivot}, o));
+    }
+
+    const mt = pixelBox(mouthBox);
+    if(mt.w >= 2 && mt.h >= 2){
+      const ma = toPx(MOUTH_CORNERS[0]), mb = toPx(MOUTH_CORNERS[1]);
+      const src = stableBox(midpoint(ma, mb), angleBetween(ma, mb),
+        faceScale * K_MOUTH * (1 + mouthPad), mt.w/mt.h, MOUTH_BIAS_Y);
+      drawRegion(src, mt, mouthBox.r,
+        Object.assign({key:'mouth', tone: portraitTone('mouth', mt)}, o));
+    }
+  }
+
+  // ---- mic input ----
+  let audioCtx, analyser, micStream, dataArray, rafId;
+  const micBtn = document.getElementById('micBtn');
+  const micStatus = document.getElementById('micStatus');
+  const volBar = document.getElementById('vol-bar');
+
+  micBtn.addEventListener('click', async () => {
+    if(micStream){
+      stopMic();
+      return;
+    }
+    try{
+      micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = parseInt(document.getElementById('smoothing').value)/100;
+      source.connect(analyser);
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      micBtn.textContent = '⏹ Mikrofon stoppen';
+      micBtn.classList.add('stop');
+      micStatus.textContent = 'Mikrofon aktiv';
+      micStatus.classList.add('ok');
+      tickMic();
+    }catch(err){
+      micStatus.textContent = 'Fehler: ' + err.message;
+    }
+  });
+
+  document.getElementById('smoothing').addEventListener('input', (e) => {
+    if(analyser) analyser.smoothingTimeConstant = parseInt(e.target.value)/100;
+  });
+
+  function stopMic(){
+    if(micStream) micStream.getTracks().forEach(t=>t.stop());
+    if(audioCtx) audioCtx.close();
+    micStream = null;
+    cancelAnimationFrame(rafId);
+    micBtn.textContent = '🎙 Mikrofon starten';
+    micBtn.classList.remove('stop');
+    micStatus.textContent = 'Mikrofon inaktiv';
+    micStatus.classList.remove('ok');
+    volBar.style.width = '0%';
+    mouthOpenAmount = 0;
+    draw();
+  }
+
+  function tickMic(){
+    analyser.getByteFrequencyData(dataArray);
+    let sum = 0;
+    for(let i=0;i<dataArray.length;i++) sum += dataArray[i];
+    const avgNorm = (sum/dataArray.length) / 255; // 0..1 raw volume
+    const threshold = parseInt(document.getElementById('threshold').value) / 100; // 0..0.5
+    const sensitivity = parseInt(document.getElementById('sensitivity').value);
+
+    // gate: anything below threshold is treated as silence, then rescale remaining range 0..1
+    const gated = Math.max(0, avgNorm - threshold) / Math.max(0.01, 1 - threshold);
+    let amt = gated * (sensitivity/4);
+    amt = Math.max(0, Math.min(1, amt));
+
+    mouthOpenAmount += (amt - mouthOpenAmount) * 0.5; // extra smoothing
+    volBar.style.width = Math.round(mouthOpenAmount*100) + '%';
+    rafId = requestAnimationFrame(tickMic);
+  }
+
+  // ---- export config ----
+  document.getElementById('copyConfig').addEventListener('click', () => {
+    const cfg = {eyeBox, mouthBox};
+    navigator.clipboard.writeText(JSON.stringify(cfg, null, 2)).then(() => {
+      const btn = document.getElementById('copyConfig');
+      const old = btn.textContent;
+      btn.textContent = '✔ Kopiert!';
+      setTimeout(()=>btn.textContent = old, 1200);
+    });
+  });
+
+  document.getElementById('obsHint').addEventListener('click', () => {
+    const el = document.getElementById('obsInfo');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // ---- main render loop (for blink transitions) ----
+  function loop(){
+    blinkAmount += ((blinkState===1 ? 1 : 0) - blinkAmount) * 0.55;
+    updateWebcam();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  scheduleBlink();
+  loop();
+})();
+</script>
+</body>
+</html>

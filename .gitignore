@@ -1,0 +1,56 @@
+# Abhängigkeiten und Bauergebnisse — beides ist aus package.json und dem Quelltext
+# jederzeit wiederherstellbar und wiegt zusammen weit über hundert Megabyte.
+node_modules/
+dist/
+
+# Erzeugt aus renderer/three-view.js — 'npm install' baut es mit (postinstall),
+# 'npm run build' baut es neu. Nicht von Hand bearbeiten.
+renderer/three-bundle.js
+
+# Die erzeugte Testdatei der Sprachausgabe. Wie die Testfigur wird sie nicht von
+# Hand gepflegt, sondern gebaut: `node tools/make-test-voice.js`.
+tools/test-voice.wav
+
+# Eigene Figuren bleiben lokal — dieselbe Linie wie bei der gebauten .exe, die
+# ebenfalls nur die Testfigur mitnimmt. Der Unterschied zu dort: Was einmal in
+# der Git-Historie liegt, steckt in jedem Klon, auch wenn man die Datei später
+# löscht. Versioniert wird deshalb nur, was mitgeliefert werden soll.
+#
+# Alles in sprites/ ist ausgenommen, außer der erzeugten Testfigur:
+sprites/*
+!sprites/demo_*.png
+!sprites/demo-figur.glb
+
+# Quelldateien der Blender-Skripte. Dieselbe Linie wie bei sprites/: Es sind
+# eigene Figuren, sie wiegen zweistellige Megabyte, und was einmal in der
+# Historie liegt, steckt in jedem Klon. Die Skripte daneben sind versioniert —
+# aus ihnen und der Quelle entsteht die Figur jederzeit neu.
+blender/*.glb
+blender/*.vrm
+
+# Aufnahmen und Bildschirmfotos aus dem Debug-Betrieb (VTUBER_SHOT).
+*.png.shot
+shot*.png
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Internes Memo zu Verkauf und Kopierschutz. Bleibt auf der Platte, geht aber
+# nicht mit ins Repo — es beschreibt Preisgestaltung und Kopierschutz und
+# gehört nicht in eine Veröffentlichung.
+#
+# ACHTUNG: Die Datei steckt weiterhin in der Git-Historie (Commits 3049f0b
+# und 77c3980). Ein Klon bringt sie mit, auch wenn sie hier fehlt. Vor dem
+# ersten Push entweder die Historie neu schreiben oder frisch anfangen.
+MEMO-lizenzierung.md
+
+# Eigene Charakterdateien fuer den Co-Moderator. Dieselbe Linie wie bei
+# sprites/: Es ist eine eigene Figur, nicht Teil des Programms - Stimme, Tonfall
+# und was sie ueber den Stream weiss, gehoeren dem, der sie geschrieben hat.
+#
+# Die App sucht sie ohnehin nicht hier, sondern dort, wo du sie im Panel
+# ausgewaehlt hast. Im Projektordner liegt sie nur der Bequemlichkeit halber.
+SCHOERK.md
+charakter*.md
+*-charakter.md

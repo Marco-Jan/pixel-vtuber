@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel VTuber</title>
+<style>
+  /* Palette aus der App selbst — wer sie benutzt, erkennt die Anleitung als ihre.
+     Hell ist die Vorgabe; Dunkel und die ausdrückliche Wahl darunter. */
+  :root{
+    --grund:#f2f3f6;
+    --flaeche:#ffffff;
+    --linie:#d9dde4;
+    --linie-zart:#e6e9ee;
+    --text:#15171d;
+    --leise:#5b6070;
+    --akzent:#b25e00;
+    --akzent-weich:#fff2e0;
+    --gut:#0d7a51;
+    --gut-weich:#e3f7ee;
+    --chroma:#00b140;
+    --schatten:0 1px 2px rgba(21,23,29,.06), 0 8px 24px rgba(21,23,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --grund:#101218;
+      --flaeche:#15171d;
+      --linie:#2b2f3a;
+      --linie-zart:#22262f;
+      --text:#e8e8ea;
+      --leise:#9599a6;
+      --akzent:#f7931e;
+      --akzent-weich:#2a1f10;
+      --gut:#3ddc97;
+      --gut-weich:#10261d;
+      --chroma:#2ee06a;
+      --schatten:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --grund:#101218;
+    --flaeche:#15171d;
+    --linie:#2b2f3a;
+    --linie-zart:#22262f;
+    --text:#e8e8ea;
+    --leise:#9599a6;
+    --akzent:#f7931e;
+    --akzent-weich:#2a1f10;
+    --gut:#3ddc97;
+    --gut-weich:#10261d;
+    --chroma:#2ee06a;
+    --schatten:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  body{
+    background:var(--grund);
+    color:var(--text);
+    font-family:Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size:17px;
+    line-height:1.65;
+    margin:0;
+    padding:0 20px 96px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .bahn{ max-width:640px; margin:0 auto; }
+
+  h1, h2, h3, .ui{ font-family:system-ui, "Segoe UI", Roboto, sans-serif; }
+  h1{
+    font-size:clamp(34px, 6vw, 50px);
+    font-weight:800;
+    letter-spacing:-.025em;
+    line-height:1.08;
+    text-wrap:balance;
+    margin:0 0 14px;
+  }
+  h2{
+    font-size:26px; font-weight:700; letter-spacing:-.015em;
+    text-wrap:balance; margin:0 0 6px;
+  }
+  h3{
+    font-size:17px; font-weight:650; letter-spacing:-.005em;
+    margin:22px 0 4px;
+  }
+  p{ margin:0 0 16px; }
+  a{ color:var(--akzent); }
+
+  .kopf{ padding:72px 0 40px; border-bottom:1px solid var(--linie); margin-bottom:8px; }
+  .vorspann{ font-size:19px; color:var(--leise); margin:0 0 18px; }
+
+  /* Inhaltsverzeichnis: bei einer Anleitung dieser Länge ist das kein Zierat,
+     sondern der Unterschied zwischen Nachschlagen und Durchlesen. */
+  nav ol{
+    list-style:none; padding:0; margin:0;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:2px 18px;
+    font-family:system-ui, sans-serif; font-size:14.5px;
+  }
+  nav a{ text-decoration:none; }
+  nav a:hover{ text-decoration:underline; }
+
+  section{
+    padding:40px 0; border-bottom:1px solid var(--linie-zart);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  section:last-of-type{ border-bottom:0; }
+  .marke{
+    font-family:ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size:11.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--leise); margin:0 0 10px;
+  }
+
+  code, kbd, .datei{ font-family:ui-monospace, "Cascadia Mono", Consolas, monospace; font-size:.88em; }
+  code, .datei{
+    background:var(--flaeche); border:1px solid var(--linie);
+    border-radius:4px; padding:1px 6px;
+  }
+  /* Ein Ausschnitt aus einer Datei, mehrzeilig. Die Auszeichnung für einzelne
+     Wörter reicht dafür nicht: Das ist ein Wort im Satz, kein Kasten mit
+     Leerzeilen darin. */
+  pre{
+    background:var(--flaeche); border:1px solid var(--linie); border-radius:8px;
+    padding:14px 16px; margin:6px 0 18px; overflow-x:auto;
+    font-size:13px; line-height:1.6;
+  }
+  pre code{ background:none; border:none; padding:0; font-size:1em; }
+
+  kbd{
+    background:var(--flaeche); border:1px solid var(--linie); border-bottom-width:2px;
+    border-radius:5px; padding:2px 7px; font-size:.82em; white-space:nowrap;
+  }
+
+  /* Nachbau der zwei Knopfreihen, an denen sich alle verheddern. Das ist
+     Information, keine Zierde: Der Unterschied ist nur im Bild zu erklären. */
+  .mock{
+    background:var(--flaeche); border:1px solid var(--linie); border-radius:8px;
+    padding:16px; margin:6px 0 20px; box-shadow:var(--schatten);
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .mock-titel{ font-family:system-ui, sans-serif; font-size:12px; color:var(--leise); margin:0 0 6px; }
+  .reihe{ display:flex; gap:6px; flex-wrap:wrap; }
+  .knopf{
+    font-family:system-ui, sans-serif; font-size:13px;
+    border:1px solid var(--linie); border-radius:6px; padding:7px 13px;
+    color:var(--text); background:transparent;
+  }
+  .knopf.an{ background:var(--gut-weich); border-color:var(--gut); color:var(--gut); font-weight:600; }
+  .knopf .rolle{ font-size:10.5px; opacity:.6; font-weight:400; }
+  .knopf.aus{ opacity:.42; }
+
+  ol.ablauf{
+    list-style:none; counter-reset:s; padding:0; margin:8px 0 4px;
+    display:flex; flex-direction:column; gap:18px;
+  }
+  ol.ablauf > li{
+    counter-increment:s; display:grid; grid-template-columns:34px 1fr;
+    gap:14px; align-items:start;
+  }
+  ol.ablauf > li::before{
+    content:counter(s);
+    font-family:ui-monospace, Consolas, monospace; font-size:13px; font-weight:600;
+    color:var(--akzent); background:var(--akzent-weich); border-radius:50%;
+    width:30px; height:30px; display:grid; place-items:center; margin-top:1px;
+  }
+  ol.ablauf p{ margin:0; }
+  ol.ablauf p + p{ margin-top:6px; color:var(--leise); font-size:15.5px; }
+
+  .merk{
+    border-left:3px solid var(--akzent); background:var(--akzent-weich);
+    padding:14px 16px; border-radius:0 6px 6px 0; margin:6px 0 18px;
+  }
+  .merk p:last-child{ margin-bottom:0; }
+  .merk strong{ font-family:system-ui, sans-serif; }
+
+  .tabelle{ overflow-x:auto; margin:8px 0 4px; }
+  table{ border-collapse:collapse; width:100%; font-size:15.5px; min-width:440px; }
+  th, td{ text-align:left; vertical-align:top; padding:11px 14px 11px 0; border-bottom:1px solid var(--linie-zart); }
+  th{
+    font-family:system-ui, "Segoe UI", sans-serif; font-size:11.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--leise); font-weight:600; border-bottom-color:var(--linie);
+  }
+  td:first-child{ width:36%; }
+
+  .gruen{
+    display:inline-block; width:12px; height:12px; border-radius:3px;
+    background:var(--chroma); vertical-align:-1px; margin-right:5px;
+  }
+
+  ul.schlicht{ margin:0 0 16px; padding-left:20px; }
+  ul.schlicht li{ margin-bottom:7px; }
+
+  .fuss{
+    max-width:640px; margin:44px auto 0; padding-top:22px;
+    border-top:1px solid var(--linie); color:var(--leise); font-size:15px;
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+
+
+<div class="bahn kopf">
+  <h1>Pixel VTuber</h1>
+  <p class="vorspann">Eine Figur, die den Mund bewegt, wenn du redest — und ein
+    zweiter Charakter, der von selbst antwortet. Das Fenster liegt durchsichtig
+    auf dem Bildschirm und geht so, wie es ist, in OBS.</p>
+  <nav>
+    <ol>
+      <li><a href="#brauchst">0 &middot; Was du brauchst</a></li>
+      <li><a href="#start">1 · Der erste Start</a></li>
+      <li><a href="#schalter">2 · Die zwei Schalter</a></li>
+      <li><a href="#figur">3 · Deine Figur</a></li>
+      <li><a href="#posen">4 · Posen und Gesten</a></li>
+      <li><a href="#import">5 · Eigene Bewegungen</a></li>
+      <li><a href="#reden">6 · Reden</a></li>
+      <li><a href="#stimme">7 · Die Stimme</a></li>
+      <li><a href="#comod">8 · Der Co-Moderator</a></li>
+      <li><a href="#hotkeys">9 · Hotkeys</a></li>
+      <li><a href="#obs">10 · Ab nach OBS</a></li>
+      <li><a href="#klemmt">11 · Wenn es klemmt</a></li>
+      <li><a href="#erweitert">12 · Erweiterte Einstellungen</a></li>
+    </ol>
+  </nav>
+</div>
+
+<div class="bahn">
+
+<section id="brauchst">
+  <p class="marke">0 · Vorher lesen</p>
+  <h2>Was du brauchst</h2>
+  <p><strong>Zum Ausprobieren brauchst du gar nichts.</strong> Die App bringt eine
+    Testfigur mit, bewegt den Mund zu deinem Mikrofon und kann sprechen — alles
+    ohne eine einzige weitere Installation. Fang damit an.</p>
+  <p>Alles Weitere kommt dazu, <em>wenn</em> du es willst. Nichts davon musst du
+    vorher entscheiden, und nichts davon geht kaputt, wenn du es weglässt. Diese
+    Tabelle sagt dir, was wozu gehört:</p>
+
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Das willst du</th><th>Dafür brauchst du</th><th>Kostet</th></tr></thead>
+      <tbody>
+        <tr><td>Eine Pixelfigur, die den Mund bewegt</td>
+            <td><strong>nichts</strong> — ist dabei</td><td>—</td></tr>
+        <tr><td>In den Stream damit</td>
+            <td><strong>OBS Studio</strong></td><td>gratis</td></tr>
+        <tr><td>Eine <strong>3D-Figur</strong> statt Pixelart</td>
+            <td>eine Modelldatei (<span class="datei">.glb</span>,
+              <span class="datei">.gltf</span> oder <span class="datei">.vrm</span>)</td>
+            <td>gratis bis teuer</td></tr>
+        <tr><td>Eigene Bewegungen für die 3D-Figur</td>
+            <td><strong>Blender</strong> und ein Konto bei
+              <strong>Mixamo</strong></td><td>gratis</td></tr>
+        <tr><td>Dass der Avatar spricht</td>
+            <td><strong>nichts</strong> — Windows bringt Stimmen mit.
+              Besser klingt <strong>Piper</strong>, holt die App selbst</td>
+            <td>gratis</td></tr>
+        <tr><td>Ihm etwas zurufen und Antwort bekommen</td>
+            <td><strong>Whisper</strong> zum Verstehen</td><td>gratis</td></tr>
+        <tr><td>Dass er selbst Antworten erfindet</td>
+            <td>ein <strong>Sprachmodell</strong> — lokal über Ollama oder LM
+              Studio, oder ein Zugang zu einem Dienst</td>
+            <td>gratis oder Cent-Beträge</td></tr>
+        <tr><td>Dass er auf den Twitch-Chat reagiert</td>
+            <td><strong>Streamer.bot</strong></td><td>gratis</td></tr>
+        <tr><td>Eine wirklich lebendige Stimme</td>
+            <td>Zugang zu <strong>ElevenLabs</strong> oder <strong>Azure</strong></td>
+            <td>ab ein paar Euro im Monat</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Wenn du eine 3D-Figur willst</h3>
+  <p>Das ist der Weg, den die meisten gehen wollen, und der mit den meisten
+    Missverständnissen. Deshalb hier der Reihe nach.</p>
+  <ol class="schlicht">
+    <li><strong>Eine Figur besorgen.</strong> Die App liest
+      <span class="datei">.glb</span>, <span class="datei">.gltf</span> und
+      <span class="datei">.vrm</span>. VRM ist das VTuber-Format — fertige Figuren
+      gibt es bei <em>VRoid Hub</em> oder <em>Booth</em>, selbst bauen kannst du
+      eine kostenlos im <em>VRoid Studio</em>. Ein Modell von Sketchfab oder
+      anderswo geht auch, wenn es als GLB vorliegt.</li>
+    <li><strong>Die Datei in den Sprite-Ordner legen.</strong> Den Ordner öffnet
+      ein Knopf im Panel. Danach im Panel oben <span class="ui"><strong>Art</strong></span>
+      auf <em>3D-Modell</em> stellen und die Datei auswählen.</li>
+    <li><strong>Mund und Augen zuordnen.</strong> Unter
+      <span class="ui"><strong>⚙ Einrichtung</strong></span> stehen drei Listen:
+      welcher <em>Shape Key</em> deines Modells den Mund öffnet, welcher die Augen
+      schließt, welcher zwinkert. Kein Modell nennt sie gleich, deshalb wird
+      zugeordnet statt geraten. Bei einer VRM heißen sie meist <code>A</code> oder
+      <code>aa</code> für den Mund und <code>Blink</code> für die Augen.</li>
+    <li><strong>Die Arme herunterholen.</strong> Ein Modell ohne Animation steht
+      in seiner Bindepose — bei fast jeder VRM sind das waagrecht abgespreizte
+      Arme. Der Regler <span class="ui"><strong>Arme senken</strong></span> nimmt
+      sie herunter.</li>
+  </ol>
+  <div class="merk">
+    <p><strong>Blender brauchst du nur für eigene Bewegungen.</strong> Eine Figur
+      anzeigen, den Mund bewegen, Posen wechseln — das alles geht ohne. Erst wenn
+      du eine Animation von Mixamo holen willst, rechnet Blender sie im
+      Hintergrund um. Die App findet es von selbst, wenn es installiert ist.</p>
+  </div>
+
+  <h3>Was wo hingehört</h3>
+  <p>Die App legt neben deinen Einstellungen ein paar Ordner an. Jeder hat im
+    Panel einen Knopf, der ihn öffnet — du musst dir keinen Pfad merken.</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Ordner</th><th>Was hinein gehört</th></tr></thead>
+      <tbody>
+        <tr><td><span class="datei">sprites</span></td>
+            <td>deine Pixelbilder und 3D-Modelle</td></tr>
+        <tr><td><span class="datei">piper</span></td>
+            <td>das Sprachprogramm und die Stimmdateien</td></tr>
+        <tr><td><span class="datei">whisper</span></td>
+            <td>das Programm fürs Zuhören und sein Modell</td></tr>
+        <tr><td><span class="datei">aufnahmen</span></td>
+            <td>eigene Sprachaufnahmen für feste Sätze</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Diese Ordner liegen <strong>außerhalb</strong> des Programms. Ein Update
+    überschreibt sie nicht, und deine Einstellungen bleiben ebenfalls erhalten —
+    du musst nach einer neuen Version nichts neu einrichten.</p>
+</section>
+
+<section id="start">
+  <p class="marke">1 · Der Anfang</p>
+  <h2>Der erste Start</h2>
+  <p>Beim ersten Mal steht eine schlichte Pixelfigur da — die mitgelieferte
+    Testfigur. Sie ist absichtlich unscheinbar: Sie soll nicht schön aussehen,
+    sondern beweisen, dass die Kette steht. Mund auf, Augen zu, Pose wechseln.</p>
+  <p>Mit <kbd>Strg</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd> holst du das Panel
+    hervor. Zum <strong>Verschieben</strong> fasst du das Fenster oben an der
+    Zeile „Pixel VTuber" an, wie bei jedem anderen Fenster auch.</p>
+  <div class="merk">
+    <p>Sagt dir die App beim Start, dass <kbd>Strg</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>
+      schon von einem anderen Programm belegt ist, dann vergib unter
+      <span class="ui"><strong>Fenster → Bedienung &amp; Hotkeys</strong></span>
+      eine andere Kombination. Bis dahin kommst du über die Leiste am oberen
+      Fensterrand ins Panel — sie erscheint, wenn du die Maus dorthin bewegst.</p>
+  </div>
+  <p>Das Panel hat oben einen Schalter <span class="ui"><strong>⚙ Erweiterte
+    Einstellungen</strong></span>. Im einfachen Zustand steht nur da, was du im
+    Betrieb bedienst. Alles, was man einmal einrichtet, liegt dahinter. Fang
+    einfach an; du brauchst den Schalter erst, wenn dir etwas fehlt.</p>
+</section>
+
+<section id="schalter">
+  <p class="marke">2 · Die zwei Schalter, die alle verwechseln</p>
+  <h2>Wer zu sehen ist — und wen du gerade einstellst</h2>
+  <p>Ganz oben im Panel liegen zwei Knopfreihen. Sie sehen ähnlich aus und tun
+    etwas völlig anderes:</p>
+
+  <div class="mock">
+    <div>
+      <p class="mock-titel">Wer ist zu sehen?</p>
+      <div class="reihe">
+        <span class="knopf">🙂 Nur ich</span>
+        <span class="knopf an">🤖 Nur Co-Mod</span>
+        <span class="knopf">👥 Beide</span>
+      </div>
+    </div>
+    <div>
+      <p class="mock-titel">Diese Figur einstellen:</p>
+      <div class="reihe">
+        <span class="knopf aus">Ich <span class="rolle">du</span></span>
+        <span class="knopf an">Co-Moderator <span class="rolle">Co-Mod</span></span>
+      </div>
+    </div>
+  </div>
+
+  <p><strong>Die obere Reihe verändert das Bild.</strong> Sie entscheidet, wer im
+    Stream steht.</p>
+  <p><strong>Die untere verändert gar nichts am Bild.</strong> Sie sagt nur, für
+    welche der beiden Figuren die Einstellungen darunter gelten.</p>
+  <p>Eine Figur, die gerade nicht zu sehen ist, kannst du auch nicht einstellen —
+    ihr Knopf ist blass. Willst du an sie heran, stell oben auf
+    <span class="ui"><strong>Beide</strong></span>.</p>
+  <div class="merk">
+    <p><strong>Die erste Figur bist immer du</strong>, die zweite ist immer der
+      Co-Moderator. Das steht klein hinter dem Namen. Wie die Figuren heißen,
+      darfst du frei entscheiden — der Name ändert nichts daran, wer sie ist.</p>
+  </div>
+</section>
+
+<section id="figur">
+  <p class="marke">3 · Aussehen</p>
+  <h2>Deine Figur</h2>
+  <p>Unter <span class="ui"><strong>Art</strong></span> entscheidest du, woraus
+    die Figur besteht. Beides funktioniert gleich gut, die Wahl hängt nur daran,
+    was du hast.</p>
+
+  <h3>Pixelart — gezeichnete Bilder</h3>
+  <p>Du legst deine PNG-Dateien in den Sprite-Ordner (Knopf im Panel) und ordnest
+    unter <em>Welche Datei welche Rolle</em> zu, welches Bild „Augen offen",
+    „Mund weit" und so weiter ist. Aus drei brauchbaren Bildern werden dabei alle
+    sechs Zustände: Augen- und Mundbereich werden getrennt übereinandergelegt.</p>
+  <p><strong>Wichtig:</strong> nur Bilder mit gleicher Rahmung mischen. Sitzt die
+    Figur auf einem Bild höher als auf dem anderen, sitzen Augen und Mund daneben.
+    Dafür gibt es die <em>Kalibrierung</em> unter den erweiterten Einstellungen —
+    dort ziehst du im Bild einen Rahmen um Augen und Mund.</p>
+
+  <h3>3D-Modell</h3>
+  <p>Leg eine <span class="datei">.glb</span>, <span class="datei">.gltf</span>
+    oder <span class="datei">.vrm</span> in den Sprite-Ordner und wähl sie unter
+    <span class="ui"><strong>Modell</strong></span>. Unter der Auswahl steht dann,
+    was die Datei mitbringt — etwa <em>„1 Shape Key, 8 Animationen"</em>.</p>
+  <p>Damit sich der Mund bewegt, muss das Modell <strong>Shape Keys</strong>
+    mitbringen (je nach Programm auch <em>Blendshapes</em>, <em>Morph Targets</em>
+    oder <em>Visemes</em> genannt). Welcher davon den Mund öffnet, stellst du
+    unter <em>⚙ Einrichtung → Mund öffnet</em> ein. Steht dort <em>0 Shape
+    Keys</em>, taugt das Modell für diesen Zweck nicht — es wird angezeigt, aber
+    der Mund bleibt zu.</p>
+  <div class="merk">
+    <p><strong>Woher eine Figur?</strong> Am sichersten ist VRoid Studio
+      (kostenlos, baut in einer halben Stunde eine Figur mit allen Shape Keys).
+      Fertige gibt es auf Booth.pm, schnelle im Browser bei Ready Player Me.
+      Mixamo taugt <em>nicht</em> als Figurenquelle — dort fehlt das bewegliche
+      Gesicht. Als Quelle für <em>Bewegungen</em> ist es dagegen der Hauptweg,
+      siehe Abschnitt 5.</p>
+  </div>
+  <p>Die drei Regler <em>Arme senken</em>, <em>Hände bewegen</em> und
+    <em>Drehen</em> holen die Figur aus ihrer Grundhaltung — ein Modell ohne
+    Animation steht sonst mit waagrecht abgespreizten Armen da. Bringt eine
+    Animation die Arme selbst mit, hat sie Vorrang.</p>
+</section>
+
+<section id="posen">
+  <p class="marke">4 · Bewegung</p>
+  <h2>Posen und Gesten</h2>
+  <p>Unter <span class="ui"><strong>Posen &amp; Gesten</strong></span> steht für
+    jede Pose ein Knopf. Ein Klick — oder der Hotkey, den du ihr gibst — und die
+    Figur macht sie.</p>
+  <p>Jede Pose ist eines von zwei Dingen, und das ist der wichtigste Unterschied
+    im ganzen Programm:</p>
+
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Verhalten</th><th>Was passiert</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>bleibt stehen</strong></td>
+          <td>Läuft in Endlosschleife, bis du eine andere Pose wählst. Für
+            Grundhaltungen — dastehen, Arme verschränkt.</td>
+        </tr>
+        <tr>
+          <td><strong>läuft ab</strong></td>
+          <td>Läuft einmal für die eingestellte Dauer und fällt dann in die
+            Grundhaltung zurück. Für Winken, Jubeln, Nicken.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="merk">
+    <p><strong>Die Figur hört nicht auf?</strong> Dann steht die Pose auf
+      <em>bleibt stehen</em>. Stell sie auf <em>läuft ab</em> — die Dauer setzt
+      sich dabei von selbst auf die Länge der Bewegung.</p>
+    <p>Oder leg dir eine Pose als Aus-Schalter an: Clip auf <code>— keiner —</code>,
+      Hotkey drauf, fertig. Dann steht die Figur wieder ruhig da.</p>
+  </div>
+
+  <h3>Von selbst bewegen</h3>
+  <p>Die Figur muss nicht warten, bis du einen Knopf drückst. Unter
+    <span class="ui"><strong>Von selbst bewegen</strong></span> macht sie in
+    Abständen eine ihrer Bewegungen, solange niemand redet.</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Regler</th><th>Was er tut</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Wie oft</strong> (oben)</td>
+            <td>das Tempo insgesamt — von etwa alle anderthalb Minuten bis alle
+              zehn Sekunden, mit Streuung, damit es nicht abgezählt wirkt</td></tr>
+        <tr><td><strong>Wie stark</strong> (oben)</td>
+            <td>nimmt die Bewegung zurück. Bei 50 geht der Arm nur halb so weit
+              hoch, die Figur bleibt dabei in ihrer normalen Haltung</td></tr>
+        <tr><td><strong>von selbst</strong> (je Pose)</td>
+            <td>wie häufig <em>diese</em> Bewegung dran ist. 0 heißt nie. Die Zahl
+              ist ihr Anteil am Los — ein kleines Nicken darf oft kommen, ein
+              großer Jubel selten</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="merk">
+    <p>Beim Reden hat die Gestik Vorrang — dazwischenfunken soll hier nichts.
+      <em>Wie stark</em> wirkt nur bei 3D-Figuren; ein Pixelbild lässt sich nicht
+      halb zeigen.</p>
+  </div>
+</section>
+
+  <h3>Von selbst reagieren: Follow, Bits, Raid</h3>
+  <p>Unter <span class="ui"><strong>Posen &amp; Gesten → Bei
+    Twitch-Ereignissen</strong></span> legst du fest, was die Figur tut, wenn im
+    Stream etwas passiert: winken beim Follow, jubeln bei Bits, sich verbeugen
+    beim Raid.</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Ereignis</th><th>Wann</th></tr></thead>
+      <tbody>
+        <tr><td>Neuer Follow</td><td>jemand folgt dir</td></tr>
+        <tr><td>Abo</td><td>Sub, ReSub, verschenktes Abo, Gift-Bombe</td></tr>
+        <tr><td>Bits</td><td>jemand spendet Bits</td></tr>
+        <tr><td>Raid</td><td>ein anderer Kanal schickt seine Zuschauer</td></tr>
+        <tr><td>Kanalpunkte</td><td>jemand löst eine Belohnung ein</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Nimm dafür eine <em>Geste</em>, keine Grundhaltung: Eine Geste läuft ab und
+    die Figur steht danach wieder wie zuvor. Eine haltende Pose bliebe stehen, bis
+    du sie von Hand wechselst. In der Liste steht bei jeder dabei, was sie ist.</p>
+  <p>Die Zuordnung gilt <strong>je Figur</strong> — oben wählst du, welche du
+    gerade einstellst. Das ist keine Umständlichkeit: Posen gehören zur Figur, und
+    zwei Figuren haben verschiedene. Was auf <em>— nichts —</em> steht, löst
+    nichts aus, und das ist der Normalfall.</p>
+  <div class="merk">
+    <p>Braucht den Twitch-Chat unter <span class="ui"><strong>Co-Mod</strong></span>
+      — die Ereignisse kommen über Streamer.bot. Ob er zusätzlich etwas
+      <em>sagt</em>, stellst du dort getrennt ein: Pose und Stimme laufen
+      unabhängig voneinander, und gerade zusammen wirkt es lebendig.</p>
+  </div>
+
+<section id="import">
+  <p class="marke">5 · Der beste Teil</p>
+  <h2>Eigene Bewegungen einbauen</h2>
+  <p>Du bist nicht auf die Bewegungen festgelegt, die deine Figur mitbringt. Bei
+    <a href="https://www.mixamo.com" target="_blank" rel="noreferrer">mixamo.com</a> gibt es hunderte fertige
+    Animationen, kostenlos, und sie lassen sich direkt einbauen — in
+    <strong>jede</strong> Figur, nicht nur in eine bestimmte.</p>
+
+  <ol class="ablauf">
+    <li><div>
+      <p>Wähl im Panel unter <span class="ui"><strong>Modell</strong></span> die
+        Figur, auf die die Bewegung soll.</p>
+      <p>Gebacken wird auf ein bestimmtes Modell — ohne Auswahl weiß die App
+        nicht, auf welches.</p>
+    </div></li>
+    <li><div>
+      <p>Lade <em>genau diese Datei</em> bei Mixamo hoch, also die
+        <span class="datei">.glb</span> aus deinem Sprite-Ordner.</p>
+      <p>Das ist die eine Bedingung, an der alles hängt: Nur dann bekommst du dein
+        eigenes Skelett zurück, und nur dann passen die Bewegungen. Lädst du ein
+        fremdes Modell hoch, kommt ein fremdes Skelett zurück und die App sagt dir
+        das auch.</p>
+    </div></li>
+    <li><div>
+      <p>Such dir eine Bewegung aus und lade sie als <strong>FBX</strong>
+        herunter.</p>
+    </div></li>
+    <li><div>
+      <p>Zieh die Datei im Panel auf die Fläche
+        <span class="ui"><strong>＋ Animation hinzufügen</strong></span>.</p>
+      <p>Der Name der Datei wird zum Namen der Bewegung:
+        <span class="datei">Orc Idle.fbx</span> ergibt den Clip
+        <code>orc_idle</code>.</p>
+    </div></li>
+    <li><div>
+      <p>Ein bis zwei Minuten warten — die App rechnet die Bewegung auf deine
+        Figur um und sagt dir, woran sie ist.</p>
+      <p>Danach steht die neue Bewegung bei jeder Pose unter <em>Clip</em> zur
+        Auswahl.</p>
+    </div></li>
+  </ol>
+
+  <div class="merk">
+    <p>Dafür muss <strong>Blender</strong> auf dem Rechner sein — es macht die
+      Umrechnung. Die App sucht es selbst; fehlt es, sagt sie das, bevor du
+      klickst.</p>
+    <p>Die FBX-Dateien bleiben im Sprite-Ordner liegen. Sie sind die
+      <em>Quelle</em> der Bewegung, kein Zwischenschritt — wirfst du sie weg,
+      fehlt der Clip beim nächsten Import.</p>
+  </div>
+</section>
+
+<section id="reden">
+  <p class="marke">6 · Dein Mund</p>
+  <h2>Reden</h2>
+  <p>Ein Klick auf <span class="ui"><strong>🎙 Mikrofon starten</strong></span>,
+    und der Mund der ersten Figur bewegt sich, sobald du sprichst. Der Balken
+    darunter zeigt, was ankommt — wenn er ausschlägt, hört die App dich.</p>
+  <p>Der Mund folgt nicht der Lautstärke, sondern dem <em>Silbentakt</em>. Deshalb
+    klappt er nicht bei jedem Geräusch auf und bleibt bei einem langen Vokal auch
+    nicht starr offen stehen. Feineinstellungen dazu (Schwellen, Verstärkung,
+    Sprechtempo) liegen unter den erweiterten Einstellungen — du brauchst sie
+    normalerweise nicht.</p>
+  <p>Der Co-Moderator hat davon nichts: Sein Mund geht nur auf für das, was er
+    selbst sagt. So können beide reden, ohne sich in die Quere zu kommen.</p>
+</section>
+
+<section id="stimme">
+  <p class="marke">7 · Seine Stimme</p>
+  <h2>Wie der Co-Moderator klingt</h2>
+  <p>Alles dazu steht im Reiter <span class="ui"><strong>Stimme</strong></span>.</p>
+
+  <h3>Eine Stimme aussuchen</h3>
+  <p>Unter <span class="ui"><strong>Stimme</strong></span> stehen alle, die dein
+    Rechner hergibt. Zwei Sorten:</p>
+  <ul class="schlicht">
+    <li><strong>Windows-Stimmen</strong> — schon da, ohne dass du etwas tust.
+      Nicht die besten, aber sie funktionieren sofort.</li>
+    <li><strong>Heruntergeladene Stimmen</strong> — deutlich besser. Wähl unter
+      <span class="ui"><strong>Stimme holen</strong></span> eine aus und drück
+      <em>Herunterladen</em>. Größe und Zweck stehen dabei, damit du nicht 109 MB
+      lädst, ohne zu wissen wofür.</li>
+  </ul>
+  <div class="merk">
+    <p><strong>Eine Datei kann mehrere Stimmen enthalten.</strong>
+      <em>Thorsten mit Gefühlen</em> bringt acht Stimmungen mit — wütend,
+      betrunken, flüsternd, verschlafen und weitere. Jede steht einzeln in der
+      Liste. Für einen Co-Moderator ist das mehr wert als jeder Filter.</p>
+  </div>
+
+  <h3>Klangfarbe</h3>
+  <p>Die gelieferten Stimmen sind alle menschlich — ein Monster gibt es nicht zu
+    wählen, das entsteht erst durch Bearbeitung:</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Klangfarbe</th><th>Klingt wie</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Normal</strong></td><td>unbearbeitet</td></tr>
+        <tr><td><strong>Troll</strong></td><td>tiefer und rauer, gut verständlich</td></tr>
+        <tr><td><strong>Monster</strong></td><td>tief, mit Grollen in der Kehle</td></tr>
+        <tr><td><strong>Dämon</strong></td><td>sehr tief und langsam grollend</td></tr>
+        <tr><td><strong>Ork</strong></td><td>kehlig und gepresst</td></tr>
+        <tr><td><strong>Roboter</strong></td><td>metallisch flatternd</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="merk">
+    <p>Zum Ausprobieren: Klangfarbe wählen, Text eintippen,
+      <span class="ui"><strong>🗣 Sprechen</strong></span>. Die Tonhöhe ändert
+      sich sofort, das Sprechtempo erst beim nächsten Satz.</p>
+    <p>Je weiter unten in der Liste, desto stärker bearbeitet — und desto
+      schwerer zu verstehen. Wenn dein Chat nachfragt, was er gesagt hat, ist
+      eine Stufe höher die richtige Wahl. Ein Tipp: Eine schon tiefe Stimme mit
+      der Klangfarbe <em>Troll</em> klingt meist besser als eine hohe Stimme, die
+      man weit hinunterzieht.</p>
+  </div>
+
+  <h3>Eine Stimme aus dem Netz</h3>
+  <p>Die mitgelieferten Stimmen klingen sauber, aber flach — sie sind auf Tempo
+    bei winzigen Modellen gebaut. Wer eine Figur will, die wirklich lebt, kommt
+    an einem Dienst kaum vorbei. Unter <span class="ui"><strong>Stimme aus der
+    Cloud</strong></span> wählst du einen aus und trägst deinen Schlüssel ein.</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Dienst</th><th>Wofür</th><th>Ungefähr</th></tr></thead>
+      <tbody>
+        <tr><td><strong>ElevenLabs</strong></td>
+            <td>Figurenstimmen und eigene Klone. Die richtige Wahl, wenn der
+              Co-Moderator ein Charakter sein soll</td>
+            <td>ab ein paar Euro im Monat</td></tr>
+        <tr><td><strong>Azure Speech</strong></td>
+            <td>sehr günstig und zuverlässig, klingt aber nach
+              Nachrichtensprecher. Braucht zusätzlich die Region</td>
+            <td>Cent-Beträge</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Du zahlst, nicht die App.</strong> Sie schickt nur den Satz, der
+    gesprochen werden soll, an den Dienst deiner Wahl — mit deinem Schlüssel.
+    Alles andere bleibt auf deinem Rechner: Mikrofon, Spracherkennung, die
+    Stimmen von der Platte.</p>
+  <p>Steht der Schlüssel, stehen die Stimmen des Dienstes <em>in derselben Liste</em>
+    wie die lokalen. Es gibt nichts zu kopieren, keine Kennnummern einzutragen.
+    Hinter jedem Namen steht, woher er kommt: <code>[Standard]</code>,
+    <code>[Bibliothek]</code>, <code>[geklont]</code>.</p>
+  <div class="merk">
+    <p><strong>Achtung beim kostenlosen Zugang von ElevenLabs:</strong> Stimmen
+      aus der <em>Voice Library</em> — also die von anderen Nutzern geteilten —
+      sind über die Schnittstelle gesperrt. Nur die mitgelieferten
+      <code>[Standard]</code>-Stimmen gehen. Genau deshalb steht die Herkunft in
+      der Liste; sonst wählt man blind und bekommt einen Fehler, der wie ein
+      Defekt aussieht.</p>
+  </div>
+  <p>Der Schlüssel braucht zwei Berechtigungen: <em>Text zu Sprache</em> und
+    <em>Stimmen (Gelesen)</em>. Mehr nicht — gerät er in fremde Hände, kann damit
+    nur gesprochen werden.</p>
+  <p>Jeder gesprochene Satz wird behalten. Sagt der Co-Moderator denselben Satz
+    noch einmal, kostet er weder Guthaben noch Wartezeit. Und antwortet der
+    Dienst nicht — kein Netz, Guthaben leer —, springt die lokale Stimme ein und
+    das Panel sagt, dass und warum. Ein stummer Avatar mitten im Stream ist das
+    schlechteste aller Ergebnisse.</p>
+
+  <h3>Deine eigene Aufnahme</h3>
+  <p>Keine Synthese klingt so gut wie eine echte Stimme. Für Sätze, die immer
+    gleich kommen — Begrüßung, Standardsprüche — sprich sie selbst ein:</p>
+  <ol class="ablauf">
+    <li><div><p>Tipp den Satz in das Feld <span class="ui"><strong>Text</strong></span>.</p></div></li>
+    <li><div>
+      <p>Darunter steht sofort, wie die Datei heißen muss — etwa
+        <span class="datei">moin.wav</span>.</p>
+      <p>Der Dateiname <em>ist</em> der Satz, auf Buchstaben und Ziffern
+        eingekocht. Keine Zuordnungsdatei, die man pflegen müsste.</p>
+    </div></li>
+    <li><div>
+      <p>Sprich ihn auf und leg die WAV-Datei über
+        <span class="ui"><strong>Aufnahmen-Ordner öffnen</strong></span> dort ab.</p>
+    </div></li>
+  </ol>
+  <p>Ab dann nimmt der Co-Moderator deine Aufnahme statt der Synthese — für jeden
+    Weg, auch für die vorgefertigten Antworten. Eine Aufnahme läuft
+    <strong>ohne Klangfarbe</strong>; sie ist ja schon die Stimme, die du wolltest.</p>
+</section>
+
+<section id="comod">
+  <p class="marke">8 · Die zweite Person</p>
+  <h2>Der Co-Moderator</h2>
+  <p>Er ist die zweite Figur — und der Teil, der von selbst etwas sagt. Alles
+    dazu steht im Reiter <span class="ui"><strong>Co-Mod</strong></span>. Du
+    kannst ihn ganz weglassen; die Figur allein funktioniert ohne.</p>
+
+  <h3>Woher er seine Antworten nimmt</h3>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Anbieter</th><th>Was du brauchst</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Vorgefertigte Antworten</strong></td>
+            <td>nichts. Er sucht in einer Liste nach Stichwörtern und antwortet
+              aus passenden Sätzen. Die Liste kannst du selbst bearbeiten</td></tr>
+        <tr><td><strong>Ollama (lokal)</strong></td>
+            <td>Ollama auf deinem Rechner plus ein Sprachmodell. Kostet nichts,
+              braucht aber Grafikspeicher, den sich Spiel und OBS mit ihm teilen</td></tr>
+        <tr><td><strong>OpenAI-kompatibel</strong></td>
+            <td>eine Adresse zu einem Dienst, der diese Schnittstelle spricht</td></tr>
+        <tr><td><strong>Anthropic</strong></td>
+            <td>einen API-Schlüssel. Er wird verschlüsselt neben den Einstellungen
+              abgelegt, nie in der Einstellungsdatei</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Fang mit <em>Vorgefertigte Antworten</em> an. Damit siehst du, ob Mund,
+    Stimme und Figur zusammenspielen, ohne dass irgendetwas installiert sein muss.</p>
+
+  <h3>Wer er ist</h3>
+  <p>Im Panel steht ein Feld <span class="ui"><strong>Wie er sich verhalten
+    soll</strong></span>. Es ist absichtlich klein: Dort gehören die Regeln hinein,
+    die daraus folgen, dass alles <em>vorgelesen</em> wird &mdash; reiner Flie&szlig;text,
+    keine Aufz&auml;hlungen, keine Sternchen. Das sind drei S&auml;tze, und sie sollen nicht
+    verlorengehen.</p>
+  <p>Wer die Figur <em>ist</em>, ist etwas anderes: Herkunft, Tonfall, was sie nie
+    sagt, wen sie wie behandelt. Das sind schnell zwei Seiten, und die schreibt man
+    nicht in ein f&uuml;nfzeiliges Feld. Daf&uuml;r gibt es darunter die
+    <span class="ui"><strong>Charakterdatei</strong></span>: eine Markdown-Datei,
+    die dort liegen darf, wo du sie ohnehin pflegst. Sie kommt <strong>zus&auml;tzlich</strong>
+    zum Feld dar&uuml;ber, nicht an seiner Stelle.</p>
+  <p>Gelesen wird sie bei <strong>jeder Frage neu</strong>. Du kannst also im Stream
+    einen Satz nachsch&auml;rfen, speichern, und die n&auml;chste Antwort kennt ihn schon &mdash;
+    ohne Neustart. Das Lesen selbst kostet nichts, was man merken w&uuml;rde; ein paar
+    Kilobyte von der Platte sind gegen die Zeit bis zum ersten Wort nicht messbar.
+    Der <em>Inhalt</em> kostet sehr wohl: Jedes Zeichen muss das Modell erst lesen,
+    bevor es das erste Wort sagt. Deshalb steht im Panel, wie viel hinausgeht, und
+    ab etwa acht Kilobyte f&auml;rbt sich die Zeile.</p>
+
+  <h3>Nicht alles in der Datei ist f&uuml;r das Modell</h3>
+  <p>So eine Datei hat meist eine &Uuml;berschrift, ein Vorwort, vielleicht Notizen
+    f&uuml;r dich selbst. Das alles mitzuschicken w&auml;re nicht nur Ballast &mdash; das Modell
+    liest es als Anweisung an sich. Ein Absatz wie &bdquo;dieses Dokument hat zwei
+    Teile&ldquo; l&auml;sst es nach einem zweiten Teil suchen, den es nie bekommt.</p>
+  <p>Zwei Zeilen grenzen deshalb ab, was wirklich hinausgeht:</p>
+  <pre><code>Meine Notizen zur Figur &hellip;
+
+&lt;!-- start --&gt;
+Du bist Sch&ouml;rk, ein grantiger Ork-Opa &hellip;
+&lt;!-- ende --&gt;
+
+Zu erledigen: Begr&uuml;&szlig;ung &uuml;berarbeiten</code></pre>
+  <p>Nur der Teil dazwischen geht ans Modell. Fehlt ein Marker, gilt die Datei ab
+    ihrem Anfang beziehungsweise bis zu ihrem Ende; fehlen beide, die ganze Datei.
+    Es sind HTML-Kommentare, weil die in gerendertem Markdown unsichtbar sind &mdash;
+    deine Datei sieht im Editor und auf GitHub aus wie vorher.</p>
+  <div class="merk">
+    <p><span class="ui"><strong>Zeigen, was ans Modell geht</strong></span> zeigt dir
+      genau den Ausschnitt, der wirklich gefragt wird &mdash; nicht eine Nachbildung
+      davon, sondern denselben Text aus derselben Stelle im Programm. Wenn eine
+      Antwort nicht klingt wie gedacht, ist das der erste Knopf: Steht der Charakter
+      &uuml;berhaupt drin, oder liest das Modell gerade dein Inhaltsverzeichnis?</p>
+  </div>
+  <p>Ist die Datei beim Fragen nicht lesbar &mdash; umbenannt, verschoben, Laufwerk
+    nicht da &mdash;, antwortet er trotzdem, nur ohne Charakter, und das Panel sagt es
+    in Rot. Mitten im Stream ist ein neutraler Satz besser als ein stummer Avatar.</p>
+
+  <h3>Wie er dich nennt — und wen er vor sich hat</h3>
+  <p>Trag unter <span class="ui"><strong>Wie er dich nennt</strong></span> deinen
+    Namen ein. Das klingt nach Kleinigkeit und ist es nicht: Ohne ihn kann er
+    nicht unterscheiden, ob gerade <em>du</em> mit ihm redest oder jemand aus dem
+    Chat — und behandelt dich dann wie einen Zuschauer, spricht also über dich in
+    der dritten Person, während du direkt vor ihm stehst.</p>
+  <p>Jede Frage bekommt deshalb eine Kennzeichnung mit:</p>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Marke</th><th>Wer redet</th></tr></thead>
+      <tbody>
+        <tr><td><code>[STREAMER: Dominic]</code></td>
+            <td>du — über Zuruf, Gespräch oder die Testfrage im Panel</td></tr>
+        <tr><td><code>[CHAT: Name]</code></td>
+            <td>ein Zuschauer — über <code>!ai</code>, über Bits, oder eine
+              Zeile, die er nebenbei mitgelesen hat</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Was er daraus macht, schreibst du in den Verhaltenstext oder die
+    Charakterdatei — etwa: <em>„Bei <code>[STREAMER: …]</code> redest du ihn
+    direkt an. Bei <code>[CHAT: …]</code> redest du den Zuschauer an und sprichst
+    über den Streamer in der dritten Person. Die Marke selbst sprichst du nie
+    aus."</em></p>
+
+  <h3>Er merkt sich das Gespräch</h3>
+  <p>Ohne Gedächtnis stünde jede Frage für sich allein: Auf
+    <em>„Wer bist du?"</em> und danach <em>„Und wie alt?"</em> könnte er die
+    zweite nicht beantworten. Deshalb gehen die <strong>letzten acht Wechsel</strong>
+    mit — Frage und Antwort.</p>
+  <p>Chat und Zuruf teilen sich denselben Verlauf. Getrennt wären es zwei
+    Gespräche mit derselben Figur: Jemand fragt im Chat etwas, du hakst per Zuruf
+    nach, und er wüsste von nichts.</p>
+  <p>Kurz gehalten mit Absicht — jede mitgeschickte Zeile muss das Modell lesen,
+    bevor das erste Wort fällt. <strong>Nach zehn Minuten Ruhe fängt er von selbst
+    neu an</strong>; sonst bezöge er sich zwei Stunden später auf etwas, das
+    niemand mehr im Kopf hat, und das wirkt nicht klug, sondern wirr. Sofort
+    vergessen geht über den Knopf
+    <span class="ui"><strong>Gespräch vergessen</strong></span>.</p>
+
+  <h3>Wie lang und wie schnell</h3>
+  <p><span class="ui"><strong>Höchstlänge</strong></span> begrenzt, wie viel er am
+    Stück sagt. Das ist keine Kostenbremse — lokal kostet nichts —, sondern eine
+    <em>Redezeitgrenze</em>: Jedes Stück Antwort wird ausgesprochen, und
+    dazwischenreden kann man ihm nicht. 300 sind zwei bis drei Sätze mit Luft.</p>
+  <div class="merk">
+    <p><strong>Antwortet er gar nicht, obwohl alles verbunden ist?</strong> Dann
+      ist wahrscheinlich <span class="ui"><strong>Nachdenken zulassen</strong></span>
+      an. Denkmodelle — Qwen3, DeepSeek-R1 und Verwandte — überlegen erst
+      schriftlich. Das siehst du nicht, es zählt aber gegen die Höchstlänge.
+      Gemessen an einem solchen Modell: 1298 Zeichen Nachdenken, dann Schluss
+      wegen Länge — <strong>kein einziges Wort Antwort</strong>, nach 24
+      Sekunden. Abgeschaltet kam das erste Wort nach einer halben Sekunde.
+      Deshalb ist es ab Werk aus.</p>
+  </div>
+
+  <h3>Wie er etwas mitbekommt</h3>
+  <ul class="schlicht">
+    <li><strong>Zuruf</strong> — du drückst einen Hotkey, redest, und er
+      antwortet. Aufgenommen wird, bis du aufhörst zu sprechen; erkannt wird der
+      Text auf deinem Rechner, nicht im Netz. Dafür braucht es Whisper im
+      passenden Ordner (Knopf im Panel).</li>
+    <li><strong>Gespräch</strong> — dasselbe, nur dauerhaft an: Er hört mit und
+      reagiert, wenn das Weckwort fällt.</li>
+    <li><strong>Twitch-Chat</strong> — über Streamer.bot. Er reagiert auf ein
+      Kommando im Chat (etwa <code>!ai</code>) und wahlweise auf Bits ab einer
+      Anzahl, die du festlegst.</li>
+    <li><strong>Eigenleben</strong> — er sagt hin und wieder selbst etwas zu einer
+      Chatzeile, ohne gefragt zu werden. Streng gebremst: Du legst fest, wie oft
+      je Stunde und wie lange vorher Ruhe geherrscht haben muss.</li>
+  </ul>
+  <div class="merk">
+    <p>Zum Ausprobieren gibt es <span class="ui"><strong>Chat simulieren</strong></span>
+      und <span class="ui"><strong>Bits simulieren</strong></span> — damit
+      prüfst du die ganze Kette, ohne dass jemand im Stream sein muss.</p>
+  </div>
+</section>
+
+<section id="hotkeys">
+  <p class="marke">9 · Bedienung im Stream</p>
+  <h2>Hotkeys</h2>
+  <p>Im Stream ist das Panel zu. Alles, was du dann noch brauchst, liegt auf
+    Tasten — vergeben unter <span class="ui"><strong>Fenster → Bedienung &amp;
+    Hotkeys</strong></span> und bei jeder Pose in ihrer eigenen Karte.</p>
+  <ul class="schlicht">
+    <li>Panel öffnen und schließen</li>
+    <li>je Pose eine Taste — die Gesten sind das, was du live auslöst</li>
+    <li>Zwinkern</li>
+    <li>Zuhören und Gespräch für den Co-Moderator</li>
+  </ul>
+  <p>Die Tasten gelten systemweit, du musst also nicht ins Fenster klicken. Wenn
+    eine Kombination von einem anderen Programm belegt ist, sagt die App das beim
+    Start — sie kann sie dann nicht bekommen.</p>
+</section>
+
+<section id="obs">
+  <p class="marke">10 · In den Stream</p>
+  <h2>Ab nach OBS</h2>
+  <p>Das Fenster hat keinen Rahmen und keinen Hintergrund — es ist nichts weiter
+    als die Figur. Zwei Wege hinein:</p>
+  <ul class="schlicht">
+    <li><strong>Fensteraufnahme.</strong> In OBS eine <em>Fensteraufnahme</em>
+      anlegen und <em>Pixel VTuber</em> wählen. Die Durchsichtigkeit kommt mit.</li>
+    <li><strong>Grüner Hintergrund.</strong> Unter
+      <span class="ui"><strong>Fenster</strong></span> auf Grün stellen
+      (<span class="gruen"></span><code>#00b140</code>) und in OBS einen
+      Chroma-Key-Filter darüberlegen. Der sichere Weg, wenn die Fensteraufnahme
+      zickt.</li>
+  </ul>
+  <p>Größe und Position stellst du im Panel unter der Figur — nicht in OBS. So
+    bleibt die Bildschärfe erhalten. Ob das Fenster über dem Spiel liegt,
+    entscheidet <em>Immer im Vordergrund</em>; für OBS ist das nicht nötig.</p>
+  <div class="merk">
+    <p>Die Maus gehört dem Spiel: Solange das Panel zu ist, lässt das Fenster
+      Klicks durch, als wäre es nicht da. Nur der schmale Streifen ganz oben nimmt
+      die Maus an — dort erscheint die Bedienleiste.</p>
+  </div>
+
+  <h3>Seine Stimme auf eine eigene Spur</h3>
+  <p>Ab Werk spricht der Avatar über dasselbe Gerät wie alles andere. In OBS
+    steckt er damit im Desktop-Ton zwischen Musik, Discord und Browser — lauter
+    stellen, leiser stellen oder aus der VOD nehmen lässt er sich dann nicht mehr
+    einzeln. Getrennt aufnehmen kann OBS nur, was auch getrennt herauskommt.</p>
+  <ol class="ablauf">
+    <li><div>
+      <p>Ein virtuelles Kabel installieren, etwa
+        <a href="https://vb-audio.com/Cable/" target="_blank" rel="noreferrer">VB-Cable</a>.
+        Das ist ein Gerät, das Windows als Lautsprecher ansieht und das an einem
+        Mikrofoneingang wieder herauskommt.</p>
+    </div></li>
+    <li><div>
+      <p>Im Reiter <span class="ui"><strong>Stimme</strong></span> bei
+        <span class="ui"><strong>Ausgabegerät</strong></span> dieses Kabel wählen.
+        Ab da geht nur die Stimme des Avatars dorthin — dein Mikrofon nicht, denn
+        das wird hier nur mitgehört und nie ausgegeben.</p>
+      <p><span class="ui"><strong>Zusätzlich selbst mithören</strong></span>
+        angehakt lassen, sonst hörst du ihn selbst nicht mehr.</p>
+    </div></li>
+    <li><div>
+      <p>In OBS eine <em>Audioeingabeaufnahme</em> anlegen und das Kabel wählen.</p>
+    </div></li>
+    <li><div>
+      <p>Im Audiomixer über das Zahnrad zu den <em>erweiterten Audioeigenschaften</em>:
+        die neue Quelle auf eine eigene Spur setzen und den Haken bei der Spur
+        entfernen, auf der schon dein Desktop-Ton liegt.</p>
+    </div></li>
+  </ol>
+  <div class="merk">
+    <p>Steht in der Liste kein Gerätename, sondern nur <em>Gerät ohne Namen</em>:
+      Windows gibt die Namen erst heraus, wenn einmal ein Mikrofon erlaubt wurde.
+      Einmal <span class="ui"><strong>🎙 Mikrofon starten</strong></span>, dann
+      <span class="ui"><strong>🔄 Dateien &amp; Modelle neu suchen</strong></span>.</p>
+    <p>Ohne Kabel geht es auch: OBS kann mit der
+      <em>Anwendungsaudioaufnahme</em> diese App allein aufnehmen. Dann bleibt das
+      Ausgabegerät hier auf Standard. Der Weg über das Kabel ist der
+      zuverlässigere — die Anwendungsaufnahme verliert ihr Ziel gelegentlich beim
+      Neustart der App.</p>
+  </div>
+</section>
+
+<section id="klemmt">
+  <p class="marke">11 · Hilfe</p>
+  <h2>Wenn es klemmt</h2>
+  <div class="tabelle">
+    <table>
+      <thead><tr><th>Das siehst du</th><th>Das ist los</th></tr></thead>
+      <tbody>
+        <tr><td>Ein Posenknopf tut nichts</td>
+            <td>Die Pose zeigt auf eine Bewegung, die dein Modell nicht kennt.
+              Unter <em>Clip</em> neu zuordnen — die orange Zeile über den Feldern
+              sagt dir, welche fehlt.</td></tr>
+        <tr><td>Die Figur bewegt sich, hört aber nicht auf</td>
+            <td>Die Pose steht auf <em>bleibt stehen</em>. Auf <em>läuft ab</em>
+              stellen.</td></tr>
+        <tr><td>Die Figur sieht falsch bemalt aus</td>
+            <td>Unter <em>⚙ Einrichtung</em> steht bei <em>Textur</em> ein Bild
+              einer anderen Figur. Auf <em>— wie im Modell —</em> stellen.</td></tr>
+        <tr><td>Der Mund bewegt sich nicht</td>
+            <td>Bei 3D: kein Shape Key zugeordnet, oder das Modell hat keinen.
+              Bei Pixelart: die Rollen zeigen auf fehlende Bilder.</td></tr>
+        <tr><td>Die neue Bewegung taucht nicht auf</td>
+            <td>Einmal auf <em>🔄 Dateien &amp; Modelle neu suchen</em> drücken.</td></tr>
+        <tr><td>„Kein neuer Clip" nach dem Import</td>
+            <td>Die FBX-Datei trägt ein anderes Skelett. Lade <em>deine</em>
+              Figur bei Mixamo hoch, nicht ein fremdes Modell.</td></tr>
+        <tr><td>Zwei Figuren, obwohl „Nur Co-Mod" eingestellt ist</td>
+            <td>Kommt nicht mehr vor. Die Rolle hängt fest an der Position:
+              erste Figur du, zweite der Co-Moderator.</td></tr>
+        <tr><td>Das Fenster lässt sich nicht verschieben</td>
+            <td>Am Titel „Pixel VTuber" im Panel anfassen, nicht am Bild der
+              Figur.</td></tr>
+        <tr><td>Er spricht nicht</td>
+            <td>Unter <em>Stimme</em> nachsehen, ob eine gewählt ist. Steht dort
+              eine mit dem Zusatz <em>braucht Piper</em>, nimm stattdessen eine
+              Windows-Stimme oder lade eine herunter.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="erweitert">
+  <p class="marke">12 · Für später</p>
+  <h2>Erweiterte Einstellungen</h2>
+  <p>Der Knopf <span class="ui"><strong>⚙ Erweiterte Einstellungen</strong></span>
+    blendet alles ein, was man einmal einrichtet und danach nie wieder anfasst:</p>
+  <ul class="schlicht">
+    <li><strong>Kalibrierung</strong> — wo bei einer Pixelfigur Augen und Mund
+      sitzen</li>
+    <li><strong>Augen</strong> — wie oft und wie lange geblinzelt wird</li>
+    <li><strong>Bewegung</strong> — Atmen, Wiegen, Federn beim Sprechen</li>
+    <li><strong>Lippen &amp; Stimme</strong> — Schwellen und Verstärkung des
+      Lippensync</li>
+    <li>die Zuordnung von Clips, Shape Keys und Texturen</li>
+    <li>die technischen Felder des Co-Moderators — Adresse, Modellname, der Text,
+      der ihm sagt, wer er ist</li>
+  </ul>
+  <p>Du brauchst den Knopf nicht, um die App zu benutzen. Er ist da, wenn du etwas
+    genauer haben willst.</p>
+</section>
+
+</div>
+
+<p class="fuss">Läuft auf Windows. Für eigene Bewegungen wird Blender gebraucht,
+  für einen Co-Moderator mit Sprachmodell zusätzlich Ollama oder ein Zugang zu
+  einem Dienst, und fürs Zuhören Whisper. Alles davon ist freiwillig — die Figur,
+  der Lippensync, die Posen und die Sprachausgabe laufen ohne.</p>
+
+</body>
+</html>

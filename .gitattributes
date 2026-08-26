@@ -1,0 +1,42 @@
+# Zeilenenden festlegen, damit sie niemandem um die Ohren fliegen.
+#
+# Ohne diese Datei entscheidet die lokale Einstellung `core.autocrlf` jedes
+# Klons, und die ist auf jedem Rechner anders. Wer unter Windows mit
+# autocrlf=true arbeitet, bekommt CRLF ins Arbeitsverzeichnis; wer unter Linux
+# entwickelt, LF. Sobald beide dieselbe Datei anfassen, meldet git jede Zeile
+# als geändert, und ein echter Unterschied von drei Zeilen versteckt sich in
+# zweitausend.
+#
+# `text=auto` heißt: git speichert alles normalisiert mit LF und richtet das
+# Arbeitsverzeichnis nach der Plattform. Das ist die Regel, die überall gilt.
+* text=auto
+
+# Ausdrücklich Text, damit auch ein exotisch eingestelltes git nicht rät.
+*.js    text
+*.json  text
+*.html  text
+*.css   text
+*.md    text
+*.py    text
+*.txt   text
+
+# Windows-Werkzeuge stolpern über LF in Batch-Dateien.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# Binärdateien nie anfassen. Eine „normalisierte" PNG oder GLB ist kaputt —
+# und das fällt erst auf, wenn jemand die Figur laden will.
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.ico   binary
+*.wav   binary
+*.glb   binary
+*.gltf  binary
+*.fbx   binary
+*.vrm   binary
+*.onnx  binary
+*.exe   binary
+
+# Nicht in die Sprachstatistik von GitHub: erzeugt, nicht geschrieben.
+renderer/three-bundle.js linguist-generated=true

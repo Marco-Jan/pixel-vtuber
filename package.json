@@ -1,0 +1,72 @@
+{
+  "name": "pixel-vtuber",
+  "version": "1.1.0",
+  "description": "Sprite- und 3D-basierter VTuber-Avatar mit Lip Sync, Posen und KI-Co-Moderator",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "npm run build && electron-builder --win portable",
+    "dist:setup": "npm run build && electron-builder --win nsis",
+    "build": "esbuild renderer/three-view.js --bundle --format=iife --outfile=renderer/three-bundle.js --legal-comments=none",
+    "postinstall": "npm run build"
+  },
+  "author": "Baloou",
+  "license": "SEE LICENSE IN LICENSE",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.2"
+  },
+  "build": {
+    "appId": "de.baloou.pixelvtuber",
+    "productName": "Pixel VTuber",
+    "files": [
+      "LICENSE",
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "sprites/demo*",
+      "antworten.json",
+      "blender/anim-import.py",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "renderer/anleitung.html",
+      "blender/**"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "PixelVTuber-${version}-portable.exe"
+    },
+    "nsis": {
+      "artifactName": "PixelVTuber-${version}-setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pixel VTuber",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Pixel VTuber"
+    },
+    "copyright": "Copyright © 2026 Baloou"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "three": "^0.185.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marco-Jan/pixel-vtuber.git"
+  },
+  "homepage": "https://github.com/Marco-Jan/pixel-vtuber",
+  "bugs": {
+    "url": "https://github.com/Marco-Jan/pixel-vtuber/issues"
+  }
+}

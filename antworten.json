@@ -1,0 +1,146 @@
+{
+  "_hinweis": [
+    "Vorgefertigte Antworten — der Co-Moderator ohne Sprachmodell.",
+    "",
+    "Gesucht wird in `wenn` nach Stichwörtern; sobald eines in der Frage vorkommt,",
+    "gilt der Eintrag. Aus `dann` wird zufällig eine Antwort gewählt, damit dieselbe",
+    "Frage nicht immer denselben Satz auslöst. Passt kein Eintrag, kommt eine aus",
+    "`sonst`.",
+    "",
+    "Geprüft wird von oben nach unten — was weiter oben steht, gewinnt. Deshalb",
+    "stehen die engen Fälle zuerst und die weiten unten.",
+    "",
+    "Eigene Antworten: Diese Datei in den Ordner neben den Einstellungen legen",
+    "(Knopf im Panel) und dort bearbeiten. Sie überschreibt die mitgelieferte."
+  ],
+
+  "antworten": [
+    { "wenn": ["wer bist du", "wie heißt du", "wer bist n du", "stell dich vor"],
+      "dann": ["Ich bin der Co-Moderator hier — quasi die zweite Stimme im Stream.",
+               "Ich sitze hier daneben und rede mit, wenn man mich fragt."] },
+
+    { "wenn": ["hallo", "hi ", "servus", "moin", "guten abend", "guten morgen", "hey"],
+      "dann": ["Hallo zusammen!", "Moin!", "Hey, schön dass ihr da seid.",
+               "Hallo! Gut, dass du da bist."] },
+
+    { "wenn": ["wie geht", "alles klar bei dir", "wie läufts"],
+      "dann": ["Läuft. Und bei dir?", "Alles bestens hier.",
+               "Kann nicht klagen — ich muss ja nur zuhören."] },
+
+    { "wenn": ["danke", "dankeschön", "vielen dank"],
+      "dann": ["Gern.", "Kein Thema.", "Immer wieder."] },
+
+    { "wenn": ["bits", "gespendet", "spende", "cheer"],
+      "dann": ["Danke für die Bits, das freut uns wirklich!",
+               "Oh, Bits! Vielen Dank dafür.",
+               "Danke dir — sowas hält den Stream am Laufen."] },
+
+    { "wenn": ["follow", "gefolgt", "abonniert", "sub"],
+      "dann": ["Willkommen an Bord!", "Danke fürs Folgen, schön dass du dabei bist.",
+               "Neuer Mensch im Chat — herzlich willkommen."] },
+
+    { "wenn": ["was spielst", "welches spiel", "was ist das für ein spiel"],
+      "dann": ["Da fragst du besser den, der den Controller hält.",
+               "Steht im Titel — ich schau ja auch nur zu."] },
+
+    { "wenn": ["wie lange", "wann ende", "wann feierabend", "wie lange noch"],
+      "dann": ["So lange es Spaß macht.", "Keine Ahnung, ich hab keine Uhr."] },
+
+    { "wenn": ["wie spät", "uhrzeit", "welcher tag"],
+      "dann": ["Zu spät für vernünftige Entscheidungen.",
+               "Frag lieber jemanden mit einer Uhr."] },
+
+    { "wenn": ["hilfe", "was kannst du", "befehle", "commands"],
+      "dann": ["Ich antworte auf ein paar Fragen — probier's einfach.",
+               "Frag mich was, dann sehen wir weiter."] },
+
+    { "wenn": ["bist du eine ki", "bist du echt", "bist du ein bot", "bist du ein mensch"],
+      "dann": ["Gerade nicht — ich lese nur ab, was vorbereitet wurde.",
+               "Ein Bot mit einer Liste. Nichts Magisches."] },
+
+    { "wenn": ["lustig", "witz", "erzähl was", "mach einen witz"],
+      "dann": ["Ich hätte einen Witz über Zeitzonen, aber der Zeitpunkt passt nie.",
+               "Mein bester Witz ist die Latenz.",
+               "Ich wollte einen Witz über Pixel machen, aber der ist zu klein."] },
+
+    { "wenn": ["gute nacht", "tschüss", "ciao", "bis dann", "cya", "bye"],
+      "dann": ["Bis zum nächsten Mal!", "Machs gut!", "Tschüss, war schön."] },
+
+    { "wenn": ["wie ist das wetter", "wetter"],
+      "dann": ["Drinnen ist es angenehm.", "Da müsste ich rausschauen, und das geht schlecht."] },
+
+    { "wenn": ["lieblings", "was magst du", "was findest du gut"],
+      "dann": ["Ruhige Streams und ein Mikrofon, das nicht rauscht.",
+               "Alles, wo ich nicht dazwischenreden muss."] },
+
+    { "wenn": ["schwer", "hilfe brauchen", "schaffst du das", "geht das"],
+      "dann": ["Sieht machbar aus.", "Kriegst du hin.", "Ich glaub dran."] },
+
+    { "wenn": ["nein", "doch nicht", "falsch"],
+      "dann": ["Dann eben nicht.", "Gut, überzeugt."] },
+
+    { "wenn": ["laut", "leise", "ton", "hört man"],
+      "dann": ["Bei mir klingt es normal.", "Sag Bescheid, wenn es zu laut ist."] }
+  ],
+
+  "sonst": [
+    "Darauf hab ich gerade keine Antwort.",
+    "Da muss ich passen.",
+    "Keine Ahnung, ehrlich gesagt.",
+    "Das weiß ich nicht — frag lieber den Chat.",
+    "Gute Frage. Nächste Frage."
+  ],
+
+  "_hinweis_chat": [
+    "Fürs Eigenleben: Womit er sich von selbst meldet, wenn im Chat etwas stand.",
+    "",
+    "Das ist bewusst eine eigene Liste. Ein Kommentar ist etwas anderes als eine",
+    "Antwort — niemand hat ihn gefragt, er sagt von sich aus etwas zu einer Zeile,",
+    "die vorbeigelaufen ist. Die Frageliste oben würde hier „Da muss ich passen\"",
+    "sagen, und das ergibt auf einen Kommentar keinen Sinn.",
+    "",
+    "Gesucht wird im *Chattext*, nicht in einer Frage. `{name}` wird durch den",
+    "Namen des Schreibers ersetzt — ohne das klänge jeder allgemeine Kommentar",
+    "gleich, egal wer etwas geschrieben hat."
+  ],
+
+  "chat": [
+    { "wenn": ["lol", "haha", "xd", "lachflash", "rofl"],
+      "dann": ["Der Chat amüsiert sich.", "{name} hat Spaß, sehe ich.",
+               "Da lacht jemand."] },
+
+    { "wenn": ["gg", "gut gemacht", "stark", "nice", "sauber", "geil"],
+      "dann": ["{name} ist zufrieden.", "Der Chat findet das gut.",
+               "Da kommt Lob aus dem Chat."] },
+
+    { "wenn": ["schwer", "hart", "nervig", "unfair", "rip", "aua"],
+      "dann": ["{name} leidet mit.", "Der Chat sieht das ähnlich.",
+               "Da ist Mitgefühl im Chat."] },
+
+    { "wenn": ["hallo", "moin", "servus", "guten abend", "bin da"],
+      "dann": ["{name} ist dazugekommen.", "Da kommt jemand rein.",
+               "Willkommen, {name}."] },
+
+    { "wenn": ["tschüss", "muss weg", "bis dann", "gute nacht", "cya"],
+      "dann": ["{name} verabschiedet sich.", "Einer weniger im Chat.",
+               "Machs gut, {name}."] },
+
+    { "wenn": ["frage", "warum", "wieso", "weshalb", "wie geht"],
+      "dann": ["{name} hätte da eine Frage.", "Im Chat wird gerade was gefragt."] },
+
+    { "wenn": ["musik", "song", "lied", "playlist"],
+      "dann": ["Im Chat geht es um Musik.", "{name} hat was zur Musik gesagt."] },
+
+    { "wenn": ["essen", "hunger", "pizza", "kaffee", "bier"],
+      "dann": ["Im Chat wird über Essen geredet. Immer ein gutes Zeichen.",
+               "{name} hat Hunger, klingt das."] }
+  ],
+
+  "chat_sonst": [
+    "{name} hat gerade was geschrieben.",
+    "Im Chat ist was los.",
+    "{name} meldet sich zu Wort.",
+    "Der Chat lebt.",
+    "Da schreibt {name} was."
+  ]
+}

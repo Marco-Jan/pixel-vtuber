@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<!-- media-src: `mediastream:` ist das Mikrofon. `blob:` sind Objekt-URLs — so
+     kommt alles herein, was der Avatar selbst spricht: die Testdatei aus dem
+     Dateiwähler und später die Sprachausgabe, die ihr Audio im Speicher
+     übergibt. `file:` erlaubt zusätzlich den direkten Pfad, wie ihn img-src für
+     die Sprites im eigenen Ordner ohnehin schon hat.
+
+     connect-src erlaubt WebSockets allgemein statt nur auf localhost. Vorher
+     stand hier `ws://127.0.0.1:*` — und damit war das Adressfeld fuer
+     Streamer.bot eine Attrappe: Wer seinen Bot auf einem zweiten Rechner
+     laufen laesst und dessen Adresse eintraegt, bekam keine Verbindung und
+     keine Erklaerung. Ein Feld, das aussieht wie benutzbar und es nicht ist,
+     kostet mehr als die engere Regel einbringt: Verbunden wird ohnehin nur
+     dorthin, wo der Benutzer selbst hinzeigt, und Chatzeilen werden als Text
+     gesetzt, nie als Markup. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: file: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; media-src 'self' mediastream: blob: file:; connect-src 'self' blob: ws: wss:">
+<title>Pixel VTuber</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="canvas"></canvas>
+
+  <!-- Bedienleiste am oberen Rand. Sie ist nur zu sehen, solange die Maus über
+       dem Fenster liegt, und verschwindet sofort wieder — im Stream ist damit
+       nichts davon zu sehen. Der freie Streifen rechts der Knöpfe zieht das
+       Fenster. -->
+  <div id="toolbar">
+    <button id="tbMenu" title="Panel öffnen">☰ Menü</button>
+    <button id="tbQuit" class="danger" title="Pixel VTuber schließen">✕ Programm beenden</button>
+    <div id="tbDrag" title="Hier ziehen, um das Fenster zu verschieben"></div>
+  </div>
+</div>
+
+<aside id="panel" class="hidden">
+
+  <!-- Bleibt beim Scrollen stehen: das Mikrofon sucht man mitten im Stream und
+       nicht am Ende einer langen Liste. Beenden steht bewusst nur in der Leiste
+       oben — zwei „Beenden" nebeneinander liest man sonst als „Panel zu". -->
+  <div id="panelTop">
+    <header>
+      <h1>Pixel VTuber<span id="appVersion"></span></h1>
+      <div class="head-actions">
+        <!-- Die Anleitung steht im Kopf und nicht in einem Reiter: Wer sie
+             sucht, weiß gerade nicht weiter, und dann ist der falsche Ort
+             derjenige, den man erst finden muss. -->
+        <button id="helpBtn" class="subtle" title="Anleitung im Browser öffnen">Anleitung</button>
+        <button id="minimizeBtn" class="subtle">Minimieren</button>
+        <button id="panelClose" class="icon" title="Panel schließen">✕</button>
+      </div>
+    </header>
+
+    <p class="gruppen-titel">Wer ist zu sehen?</p>
+    <div class="btn-group role-switch">
+      <button id="roleVtuber">🙂 Nur ich</button>
+      <button id="roleComod">🤖 Nur Co-Mod</button>
+      <button id="roleBoth">👥 Beide</button>
+    </div>
+    <p class="hint" id="roleHint"></p>
+
+    <button id="micBtn" class="wide primary">🎙 Mikrofon starten</button>
+    <div class="mic-line">
+      <div class="meter"><div class="meter-fill" id="volBar"></div><div class="meter-mark" id="markMid"></div><div class="meter-mark" id="markWide"></div></div>
+      <div class="status" id="micStatus">Mikrofon inaktiv</div>
+    </div>
+
+    <!-- Zuhören und Gespräch stehen hier und nicht im Zuruf-Reiter: Sie werden im
+         laufenden Stream bedient, nicht beim Einrichten. Nebeneinander, damit der
+         Kopfbereich nicht weiter wächst. -->
+    <div class="btn-group">
+      <button id="sttListen" disabled>🎧 Zuhören</button>
+      <button id="sttTalk">💬 Gespräch</button>
+    </div>
+    <div class="status" id="sttStatus">wird gesucht…</div>
+    <!-- Die Figurauswahl steht hier oben, weil sie für drei Abschnitte gilt:
+         Sprites, Posen und Kalibrierung bearbeiten alle die gewählte Figur.
+
+         Die Beschriftung ist nicht Zierde: Darüber stehen drei Knöpfe, die
+         beinahe gleich aussehen und etwas völlig anderes tun — die eine Reihe
+         bestimmt, *wer zu sehen ist*, diese hier, *welche Figur man einstellt*.
+         Ohne die zwei Wörter verwechselt man sie, und dann wundert man sich,
+         warum ein Klick nichts bewirkt. -->
+    <p class="gruppen-titel">Diese Figur einstellen:</p>
+    <div class="btn-group" id="figureButtons"></div>
+
+    <div class="btn-group tabs" id="tabs">
+      <button data-tab="figur">Figur</button>
+      <button data-tab="stimme">Stimme</button>
+      <button data-tab="comod">Co-Mod</button>
+      <button data-tab="fenster">Fenster</button>
+    </div>
+
+    <!-- Trennt Bedienung von Einrichtung. Im einfachen Zustand steht nur da,
+         was man im Betrieb anfasst; alles, was man einmal einstellt und dann
+         nie wieder, liegt hinter diesem Schalter. Er sitzt im festen Kopfteil,
+         damit er von jedem Reiter aus erreichbar ist. -->
+    <button id="advToggle" class="wide subtle">⚙ Erweiterte Einstellungen</button>
+  </div>
+
+  <p id="hotkeyWarning" class="hint warnbox hidden"></p>
+
+  <section data-tab="figur">
+    <h2>Avatar &amp; Sprites</h2>
+    <p class="hint">Alles in diesem Abschnitt sowie <em>Posen</em> und
+      <em>Kalibrierung</em> gehören zu der Figur, die hier gewählt ist. Zwei Figuren
+      haben eigene Sprites, eigene Posen und eigene Boxen — sie sollen ja gerade
+      nicht gleich aussehen. Gewählt wird sie oben, über den Reitern.</p>
+    <div class="row adv"><label for="figLabel">Name</label><input type="text" id="figLabel"></div>
+    <!-- Hier stand einmal „Stellt dar" (17.08.2026 entfernt). Die Rolle war je
+         Figur wählbar, obwohl es genau zwei Figuren und genau zwei Rollen gibt —
+         damit ließen sich ausschließlich Widersprüche bauen: beide als
+         Co-Moderator, oder über Kreuz. Sie folgt jetzt der Position: die erste
+         Figur bist du, die zweite ist der Co-Moderator. -->
+    <p class="hint">Die <strong>erste</strong> Figur bist du — ihr Mund folgt deinem
+      Mikrofon. Die <strong>zweite</strong> ist der Co-Moderator und öffnet den Mund
+      nur für das, was er selbst sagt.</p>
+    <p class="hint adv">Der Name oben ist reine Beschriftung &mdash; du kannst die Figur
+      nennen, wie du willst. Wer von beiden was tut, entscheidet die Reihenfolge,
+      nicht der Name.</p>
+
+    <div class="row"><label for="kind">Art</label><select id="kind">
+      <option value="2d">Pixelart — Sprites</option>
+      <option value="3d">3D-Modell (.glb, .gltf, .vrm)</option>
+    </select></div>
+    <div id="model3dBlock">
+      <div class="row"><label for="model">Modell</label><select id="model"></select></div>
+      <div class="status" id="modelStatus"></div>
+
+      <!-- Alles, was man einmal beim Einrichten stellt und danach nie wieder,
+           liegt eingeklappt. Sichtbar bleibt, was man im Betrieb anfasst. Der
+           Block klappt von selbst auf, sobald etwas daran nicht stimmt — dann
+           ist es kein Suchen, sondern eine Aufforderung. -->
+      <button id="setupToggle" class="wide subtle" aria-expanded="false">⚙ Einrichtung</button>
+      <div id="setupBlock" class="hidden">
+      <div class="row"><label for="modelTexture">Textur</label><select id="modelTexture"></select></div>
+      <p class="hint">Nur nötig, wenn du das Modell umfärben willst. Ein Modell
+        bringt sein Aussehen normalerweise selbst mit — dann gehört hier
+        <em>„— wie im Modell —"</em> hin. Eine Textur passt immer nur auf das
+        Modell, für das sie gemalt wurde; die eines anderen ergibt Hosenstoff
+        auf der Wange.</p>
+      <div class="row"><label for="morphMouth">Mund öffnet</label><select id="morphMouth"></select></div>
+      <div class="row"><label for="morphBlink">Augen zu</label><select id="morphBlink"></select></div>
+      <div class="row"><label for="morphWink">Zwinkern</label><select id="morphWink"></select></div>
+      <p class="hint">Welche <em>Shape Keys</em> deines Modells der Mund und die
+        Augen bewegen. Die Listen füllen sich aus dem geladenen Modell — kein
+        Blender-Charakter nennt sie gleich, deshalb wird zugeordnet statt geraten.
+        Der Treiber dahinter ist derselbe wie bei den Sprites: Er liefert eine
+        Mundstufe und einen Augenzustand und weiß nicht, was daraus wird.</p>
+      <div class="row"><label for="armDrop">Arme senken (Grad)</label><input type="range" id="armDrop" min="0" max="90" value="65"></div>
+      <p class="hint">Holt die Figur aus der T-Pose. Ein Modell ohne Animationen
+        steht in seiner Bindepose, und das sind bei fast jeder VRM waagrecht
+        abgespreizte Arme. Gefunden werden die Oberarme über die genormte
+        Knochenkarte der VRM-Datei, nicht über Namen — deshalb wirkt der Regler
+        bei jeder VRM, aber bei einem gewöhnlichen glTF ohne diese Karte gar nicht.
+        Bringt das Modell eine Animation der Arme mit, hat die Vorrang.</p>
+      <div class="row"><label for="handAmp">Hände bewegen (Grad)</label><input type="range" id="handAmp" min="0" max="20" value="6"></div>
+      <p class="hint">Lässt Arme, Ellbogen und Hände leicht mitgehen, statt sie
+        starr hängen zu lassen. Beim Sprechen deutlicher — wer redet, hält die
+        Hände nicht still, und umgekehrt verrät völlige Ruhe beim Sprechen sofort
+        die Puppe. Angetrieben vom selben Pegel wie der Mund, die Figur
+        gestikuliert also zu ihrer eigenen Stimme. Beide Seiten laufen mit
+        verschiedenen Frequenzen und gegenläufig; im Gleichtakt sähe es aus wie
+        Turnen. Braucht wie „Arme senken" die Knochenkarte einer VRM.</p>
+      <div class="row"><label for="turnAmp">Drehen (Grad)</label><input type="range" id="turnAmp" min="0" max="35" value="12"></div>
+      <p class="hint">Lässt die Figur langsam um die Hochachse wandern, sodass man
+        hin und wieder etwas von der Seite sieht. Bewusst als zwei überlagerte
+        Schwingungen mit unrunden Frequenzen gerechnet: Eine einzelne wäre ein
+        Metronom, das man nach zwei Minuten bemerkt. So wiederholt sich die
+        Bewegung erst nach Stunden und liest sich als Umschauen. 0 stellt die Figur
+        starr nach vorn.</p>
+      <p class="hint">Nur bei 3D — eine Pixelfigur hat keine Seiten, die man zeigen
+        könnte.</p>
+
+      <p class="hint">Bleibt <em>Zwinkern</em> leer, schließt ein Zwinkern beide
+        Augen — dieselbe Nachsicht wie bei den Sprites, wo eine fehlende
+        Zwinker-Rolle auf das normale Blinzeln zurückfällt.</p>
+      <p class="hint">Die Datei gehört in denselben Ordner wie die Sprites.
+        Mitgeliefert ist eine erzeugte Testfigur (<code>demo-figur.glb</code>) —
+        absichtlich hässlich, sie soll nichts hermachen, sondern beweisen, dass
+        Mund, Augen und Posenwechsel ankommen.</p>
+      <p class="hint">Posen sind hier <em>Animationsclips</em> statt Bilder. Welcher
+        Clip zu welcher Pose gehört, stellst du unter <em>Posen &amp; Gesten</em>
+        ein.</p>
+      </div>
+    </div>
+
+    <div class="row"><label for="avScale">Größe</label><input type="range" id="avScale" min="30" max="200" value="100"></div>
+    <div class="row"><label for="avX">Position X</label><input type="range" id="avX" min="-100" max="100" value="0"></div>
+    <div class="row"><label for="avY">Position Y</label><input type="range" id="avY" min="-100" max="100" value="0"></div>
+    <p class="hint">Angegeben in Prozent der Fensterbreite, nicht in Pixeln — der
+      Abstand zwischen zwei Figuren bleibt damit gleich, wenn du das Fenster
+      veränderst. Über ±50 hinaus schiebt es die Figur teilweise aus dem Bild; das
+      ist gewollt, wenn eine nur halb hereinschauen soll.</p>
+    <p class="hint"><strong>Stehen zwei Figuren zu dicht?</strong> Meist liegt es
+      nicht am Regler, sondern am Fenster: Eine Figur wird so groß gezeichnet, wie
+      sie ins Fenster passt. In einem hohen, schmalen Fenster füllt jede fast die
+      ganze Breite, und dann hilft kein Verschieben. Mach das Fenster
+      <em>breiter</em> (weiter unten unter <em>Fenster</em>) — dann begrenzt die
+      Höhe die Größe, und beide passen nebeneinander. Sonst die <em>Größe</em> je
+      Figur herunterdrehen.</p>
+    <div class="row adv"><label for="depth">Ebene</label><input type="range" id="depth" min="0" max="9" value="0"></div>
+    <p class="hint adv">Wer vorn liegt, wenn sich zwei Figuren überschneiden — größer
+      heißt weiter vorn. Der Co-Moderator steht ab Werk hinter dir: Er ist der Gast
+      im Bild, und wenn etwas verdeckt wird, soll es nicht dein Gesicht sein.</p>
+    <div class="row inline adv"><label for="mirror">Spiegeln</label><input type="checkbox" id="mirror"></div>
+    <p class="hint adv">Dreht die Figur seitenverkehrt um ihre eigene Mittelachse — sie bleibt also stehen, wo sie steht, und „Position X" behält seine Richtung. Alles geht mit: Posen, Augen, Mund, auch die Kalibrierrahmen und das Ziehen darin. Die gespeicherten Boxen ändern sich dabei nicht, du kannst also jederzeit hin- und herschalten. Nur eines dreht sich zwangsläufig mit: Beim Zwinkern schließt sich dann das andere Auge.</p>
+
+    <!-- Nur für Pixelfiguren: Bei einem 3D-Modell kommen Augen und Mund aus
+         Shape Keys, nicht aus Bilddateien. Diese sechs Felder täten dort
+         nichts — und Felder, die nichts tun, sind schlimmer als keine. -->
+    <div id="sprite2dBlock" class="adv">
+      <h3>Welche Datei welche Rolle</h3>
+      <p class="hint">Änderung wirkt sofort.</p>
+      <div id="roleControls"></div>
+      <div id="spriteStatus" class="status"></div>
+      <p class="hint">Mitgeliefert ist eine Testfigur. Eigene PNGs kommen in deinen Sprite-Ordner (Knopf unten) — nach einem Neustart stehen sie in den Listen. Wichtig: nur Bilder mit gleicher Rahmung mischen, sonst sitzen Augen und Mund daneben, und dann hilft nur Kalibrieren.</p>
+      <div class="btn-group">
+        <button id="openSprites">📁 Sprite-Ordner</button>
+        <button id="resetRoles" class="subtle">Rollen zur&uuml;cksetzen</button>
+      </div>
+    </div>
+  </section>
+
+  <section data-tab="figur">
+    <h2>Posen &amp; Gesten</h2>
+    <div class="btn-group" id="poseButtons"></div>
+
+    <!-- Animationen kommen als FBX von Mixamo. Umgerechnet wird in Blender —
+         die App kann kein FBX. Der Knopf verbirgt das nicht, er nimmt einem nur
+         den Weg über die Kommandozeile ab. Die ganze Fläche nimmt auch abgelegte
+         Dateien an; ein Knopf allein wäre der halbe Weg.
+
+         Liegt hinter den erweiterten Einstellungen: Wer eigene Bewegungen bei
+         Mixamo holt und durch Blender schickt, sucht sie dort auch. Im ersten
+         Anlauf zählt, was die mitgelieferte Figur schon kann. -->
+    <div id="animDrop" class="adv">
+      <button id="animAdd" class="wide">＋ Animation hinzufügen (FBX)</button>
+      <p class="hint" id="animHint">… oder Datei einfach hier ablegen. Lade dein
+        Modell bei mixamo.com hoch, such dir eine Bewegung und leg die FBX-Datei
+        hier ab — sie steht danach als Clip zur Auswahl.</p>
+      <div class="status" id="animStatus"></div>
+    </div>
+    <p class="hint">Posen mit durchgezogenem Rand bleiben stehen, gestrichelte sind Gesten und fallen nach ihrer Dauer zurück. Beim Kalibrieren wird immer die gerade gehaltene Pose bearbeitet — jede hat eigene Boxen.</p>
+
+    <!-- Die Knöpfe oben bleiben immer da — Posen auslösen ist Bedienung. Was
+         eine Pose *ist* (welcher Clip, wie lange, welcher Hotkey), richtet man
+         einmal ein und liegt deshalb hinter dem Schalter. -->
+    <div id="poseControls" class="adv"></div>
+    <div id="poseStatus" class="status"></div>
+    <button id="addPose" class="wide adv">Geste hinzufügen</button>
+    <div class="row adv"><label for="poseFade">Übergang (ms)</label><input type="range" id="poseFade" min="0" max="600" step="10" value="140"></div>
+    <p class="hint adv">Der Übergang blendet die Körper bei jedem Posenwechsel weich ineinander — Augen und Mund bleiben dabei scharf.</p>
+    <p class="hint adv">Jede Pose braucht ein eigenes Sprite in derselben Rahmung wie die übrigen. „Bleibt stehen“ ist eine Grundhaltung, „läuft ab“ eine Geste wie Winken oder Herz: einmal Hotkey drücken, und nach der eingestellten Dauer steht der Avatar wieder wie zuvor.</p>
+
+    <h3>Von selbst bewegen</h3>
+    <div class="row inline"><label for="randomOn">Auch ohne zu reden</label><input type="checkbox" id="randomOn" checked></div>
+    <div class="row adv"><label for="randomRate">Wie oft</label><input type="range" id="randomRate" min="0" max="100" value="35"></div>
+    <div class="row adv"><label for="randomPower">Wie stark</label><input type="range" id="randomPower" min="5" max="100" value="70"></div>
+    <p class="hint">Die Figur macht von selbst eine ihrer Bewegungen, solange
+      niemand redet. Welche in Frage kommen und wie oft jede
+      einzelne dran ist, stellst du unten je Pose bei <em>von selbst</em> ein:
+      0 heißt nie, ein höherer Wert heißt öfter. So darf ein kleines Nicken
+      häufig kommen und ein großer Jubel selten. <em>Wie oft</em> hier bestimmt
+      das Tempo insgesamt — von etwa alle anderthalb Minuten bis alle zehn
+      Sekunden, mit Streuung, damit es nicht abgezählt wirkt. <em>Wie stark</em> nimmt die Bewegung zurück: Bei 50 geht
+      der Arm nur halb so weit hoch. Das gilt nur für 3D-Figuren — ein Sprite
+      lässt sich nicht halb zeigen. Beim Reden hat die Gestik unten Vorrang;
+      dazwischenfunken soll hier nichts.</p>
+
+    <h3 class="adv">Bei Twitch-Ereignissen</h3>
+    <div id="eventPoses" class="adv"></div>
+    <p class="hint adv">Winken beim Follow, jubeln bei Bits: Bei jedem dieser
+      Ereignisse spielt die Figur eine Pose. Das gilt <strong>je Figur</strong> &mdash;
+      oben w&auml;hlst du, welche du gerade einstellst. Was auf
+      <em>&mdash; nichts &mdash;</em> steht, l&ouml;st nichts aus.</p>
+    <p class="hint adv">Eine <em>Geste</em> eignet sich hier besser als eine
+      Grundhaltung: Sie l&auml;uft ab und die Figur steht danach wieder wie zuvor. Eine
+      haltende Pose bliebe stehen, bis du sie von Hand wechselst.</p>
+    <p class="hint adv">Braucht den Twitch-Chat unter <span class="ui"><strong>Co-Mod</strong></span>
+      &mdash; die Ereignisse kommen &uuml;ber Streamer.bot. Ob eine Antwort dazu
+      gesprochen wird, stellst du dort getrennt ein; Pose und Stimme laufen
+      unabh&auml;ngig voneinander.</p>
+
+    <h3 class="adv">Automatisch gestikulieren</h3>
+    <div class="row inline adv"><label for="gestureAuto">Beim Reden gestikulieren</label><input type="checkbox" id="gestureAuto" checked></div>
+    <div class="row adv"><label for="gesturePose">Welche Pose</label><select id="gesturePose"></select></div>
+    <div class="row adv"><label for="gestureRate">Lebhaftigkeit</label><input type="range" id="gestureRate" min="0" max="100" value="50"></div>
+    <p class="hint adv">Solange geredet wird, geht die Geste auf und gleich wieder zu, pausiert kurz und beginnt von vorn — das ergibt den Eindruck von Gestik beim Sprechen. Der Regler bestimmt, wie schnell dieser Zyklus läuft: ganz links etwa 13 Gesten pro Minute, ganz rechts 50. Zum Abschalten das Häkchen darüber, ganz links wird noch gestikuliert. Beide Zeiten sind gestreut, damit es nicht abgezählt wirkt. Greift nur, solange die gewählte Pose nicht ohnehin gehalten wird; löst du selbst etwas aus, hat das Vorrang.</p>
+  </section>
+
+  <section data-tab="figur" class="adv">
+    <h2>Kalibrierung</h2>
+    <p class="hint">Modus wählen, dann im Bild einen Rahmen ziehen. Pfeiltasten verschieben ihn pixelweise.</p>
+    <div class="btn-group" id="calibButtons">
+      <button data-mode="eyes">Augen</button>
+      <button data-mode="mouth">Mund</button>
+      <button data-mode="none" class="active">Fertig</button>
+    </div>
+    <div class="row"><label for="featherEyes">Kante Augen</label><input type="range" id="featherEyes" min="0" max="80" value="25"></div>
+    <div class="row"><label for="featherMouth">Kante Mund</label><input type="range" id="featherMouth" min="0" max="80" value="25"></div>
+
+    <h3>Vorschau</h3>
+    <p class="hint">Zustand festhalten, um die Boxen ohne Mikrofon zu prüfen. „Auto" gibt die Steuerung wieder frei.</p>
+    <div class="btn-group" id="previewEyes">
+      <button data-eyes="auto" class="active">Augen auto</button>
+      <button data-eyes="open">offen</button>
+      <button data-eyes="closed">zu</button>
+      <button data-eyes="wink">zwinkern</button>
+    </div>
+    <div class="btn-group" id="previewMouth">
+      <button data-mouth="auto" class="active">Mund auto</button>
+      <button data-mouth="0">zu</button>
+      <button data-mouth="1">offen</button>
+      <button data-mouth="2">weit</button>
+    </div>
+    <button id="copyCalib" class="wide">Kalibrierung von „Arme verschränkt" übernehmen</button>
+    <button id="resetCalib" class="wide subtle">Auf Standardwerte zurücksetzen</button>
+  </section>
+
+  <section id="sectionChat" data-tab="comod">
+    <h2>Twitch-Chat</h2>
+    <p class="hint">Über den WebSocket-Server von
+      <a href="https://streamer.bot" target="_blank" rel="noreferrer">Streamer.bot</a>
+      — kein OAuth, keine Token-Erneuerung, das macht Streamer.bot schon.</p>
+    <div class="status" id="chatStatus">aus</div>
+    <div class="row"><label for="chatOn">Chat mithören</label><input type="checkbox" id="chatOn"></div>
+    <div class="row adv"><label for="chatUrl">Adresse</label><input type="text" id="chatUrl"></div>
+    <p class="hint">Muss zu <em>Servers/Clients → WebSocket Server</em> in Streamer.bot
+      passen. Ist er noch nicht offen, versucht die App es von selbst weiter —
+      erst schnell, dann seltener.</p>
+
+    <div class="row adv"><label for="chatCommand">Kommando</label><input type="text" id="chatCommand"></div>
+    <p class="hint">Nur Nachrichten, die damit anfangen, kommen überhaupt bei ihm an
+      — alles andere liest er gar nicht. Ein Avatar, der jede Zeile kommentiert, ist
+      nach zehn Minuten unerträglich.</p>
+
+    <div class="row adv"><label for="chatCooldown">Sperre</label><input type="number" id="chatCooldown" min="0" max="600"></div>
+    <p class="hint">Sekunden, die nach einer Antwort verstreichen müssen. Was in
+      dieser Zeit hereinkommt, wird <strong>verworfen, nicht aufgestaut</strong> —
+      sonst arbeitet er nach einer lebhaften Minute eine Warteschlange ab, die
+      längst niemanden mehr interessiert. Dasselbe gilt, solange er noch spricht
+      oder zuhört.</p>
+
+    <div class="row"><label for="bitsOn">Auf Bits reagieren</label><input type="checkbox" id="bitsOn"></div>
+    <div class="row adv"><label for="bitsMin">... ab</label><input type="number" id="bitsMin" min="1" max="100000"></div>
+    <p class="hint">Bedankt sich, wenn jemand mindestens so viele Bits schickt. Die
+      Untergrenze verhindert, dass ein einzelnes Bit ihn losredet.</p>
+
+    <div class="row adv"><label for="chatTestText">Testfrage</label><input type="text" id="chatTestText" placeholder="wer bist du?"></div>
+    <div class="btn-group adv">
+      <button id="chatTestMsg">💬 Chat simulieren</button>
+      <button id="chatTestBits">💎 Bits simulieren</button>
+    </div>
+    <p class="hint adv">Schickt eine erfundene Nachricht durch <em>denselben</em> Weg, den
+      eine echte nimmt — samt Feldauswertung, Sperre und allem dahinter. Braucht weder
+      Twitch noch einen laufenden Stream. Für Bits ist das ohnehin der einzige Weg:
+      Einem Kanal, der nicht sendet, spendet niemand.</p>
+
+    <h3>Eigenleben</h3>
+    <div class="row inline"><label for="idleOn">Von selbst zum Chat sagen</label><input type="checkbox" id="idleOn"></div>
+    <div class="row adv"><label for="idlePerHour">Höchstens je Stunde</label><input type="number" id="idlePerHour" min="0" max="30"></div>
+    <div class="row adv"><label for="idleQuietSec">Erst nach Ruhe (s)</label><input type="number" id="idleQuietSec" min="2" max="300"></div>
+    <p class="hint">Damit er nicht nur antwortet, sondern hin und wieder von selbst
+      etwas sagt. Er kommentiert dann eine Zeile, die im Chat stand — <strong>nur
+      das</strong>: Ein Avatar, der aus dem Nichts Sätze bildet, wirkt nicht
+      lebendig, sondern zufällig. Ist der Chat still, ist er es auch.</p>
+    <p class="hint">Der schwierige Teil ist nicht der Anlass, sondern die Bremsen.
+      Vier Stück: ein <em>Stundenbudget</em> statt eines festen Takts, damit sich
+      nach einer ruhigen Phase nichts aufstaut; du musst eine Weile <em>still</em>
+      gewesen sein, sonst redet er dir ins Wort; er meldet sich nie, während er
+      ohnehin spricht oder zuhört; und was in einer Sperre auflaufen würde, wird
+      <em>verworfen statt aufgestaut</em>.</p>
+    <p class="hint">Vier bis sechs je Stunde wirken lebendig. Wer höher geht, merkt
+      es erst nach zwanzig Minuten Stream — und dann ist es zu spät. Auf 0 stellen
+      schaltet es ab, auch bei gesetztem Häkchen.</p>
+
+    <!-- Fehlersuche, kein Bedienelement: ein Kasten, der im Regelfall leer
+         bleibt und trotzdem eine Handbreit Panel kostet. -->
+    <label class="stack adv">Zuletzt empfangen</label>
+    <p class="answer adv" id="chatRaw"></p>
+    <p class="hint adv">Die rohe Nachricht von Streamer.bot. Kommt etwas an, wird aber
+      nichts ausgelöst, liegt es fast immer daran, dass die Felder in deiner Fassung
+      anders heißen — dann steht hier, wie sie wirklich heißen.</p>
+  </section>
+
+  <section id="sectionStt" data-tab="comod">
+    <h2>Zuruf</h2>
+    <p class="hint">Taste drücken, Frage sagen — der Rest läuft von selbst.
+      Transkribiert wird lokal mit
+      <a href="https://github.com/ggml-org/whisper.cpp" target="_blank" rel="noreferrer">whisper.cpp</a>
+      auf der CPU, damit die Grafikkarte dem Spiel gehört.</p>
+    <div class="row adv"><label for="sttModel">Modell</label><select id="sttModel"></select></div>
+    <p class="hint">Gemessen auf acht Threads für gut drei Sekunden Zuruf:
+      <code>base</code> 1,1 s, <code>small</code> 2,2 s — bei gleichem Ergebnis.
+      Deshalb ist <code>base</code> die Vorgabe. Versteht er dich schlecht, ist
+      <code>small</code> der nächste Versuch.</p>
+    <div class="row"><label for="listenMode">Betriebsart</label><select id="listenMode">
+      <option value="once">Ein Zuruf je Tastendruck</option>
+      <option value="always">Dauerbetrieb — ein/aus</option>
+    </select></div>
+    <p class="hint"><strong>Ein Zuruf:</strong> Taste drücken, Frage sagen, fertig.
+      <strong>Dauerbetrieb:</strong> Taste schaltet ein, er hört mit, bis du wieder
+      drückst — jede Sprechpause schließt eine Äußerung ab.</p>
+
+    <div class="row adv"><label for="listenWake">Weckwort</label><input type="text" id="listenWake"></div>
+    <p class="hint">Nur im Dauerbetrieb. Dort hört er <em>alles</em>, was du sagst —
+      auch das, was deinem Publikum gilt und nicht ihm. Das Weckwort ist die
+      Trennlinie: Nur was dahinter steht, geht als Frage weiter. Geprüft wird es am
+      erkannten <em>Text</em>, nicht am Ton — also kein zweites Modell und keine
+      Fehlauslösung durch Spielgeräusche. Leer heißt: er antwortet auf jeden Satz.</p>
+    <p class="hint">Das Weckwort wird der Erkennung automatisch als bekanntes Wort
+      mitgegeben — sonst schreibt sie einen Namen, den sie nicht kennt, gar nicht
+      erst hin, und dann kann kein Filter ihn finden. Gesucht wird nachsichtig:
+      „Franck" oder „Frang" zählen auch, solange der erste Buchstabe stimmt. Der
+      muss stimmen, sonst löste „krank" auf „Frank" aus.</p>
+    <p class="hint"><strong>Zwei Silben sind zuverlässiger als eine.</strong> Ein
+      kurzer, alltäglich klingender Name ist für die Erkennung das Schwerste. „Hey
+      Frank" oder ein ungewöhnlicherer Name geht seltener verloren.</p>
+
+    <div class="row"><label for="hkListen">Hotkey Zuhören</label><input type="text" class="hotkey" id="hkListen" readonly value="Control+Alt+L"></div>
+    <div class="row"><label for="hkTalk">Hotkey Gespräch</label><input type="text" class="hotkey" id="hkTalk" readonly value="Control+Alt+G"></div>
+    <p class="hint"><strong>Gespräch</strong> heißt: Er hört zu und antwortet
+      <em>ohne</em> Weckwort, bis du wieder drückst. Für die Minute, in der du
+      wirklich mit ihm redest — nach jedem Satz den Namen zu sagen, hält kein
+      Gespräch aus. Ist es zu, gilt das Weckwort wie gewohnt.</p>
+    <p class="hint">Ein offenes Mikrofon, das jeden Satz beantwortet, ist nichts,
+      was man vergessen darf. Deshalb ist der Zustand am Knopf und am Rand des
+      Fensters zu sehen, und nach zwei Minuten ohne Zuruf schließt sich das
+      Gespräch von selbst.</p>
+    <p class="hint">Während er selbst spricht, schreibt er nichts mit — sonst hörte er
+      sich aus den Boxen selbst zu und beantwortete seine eigene Antwort. Genau daran
+      scheitert dauerhaftes Zuhören sonst. Im Dauerbetrieb bewegt er beim Mithören
+      weiter deine Lippen; nur beim einzelnen Zuruf bleibt der Mund zu, weil du dann
+      ihn ansprichst und nicht dein Publikum.</p>
+
+    <p class="hint">Ein- und ausgeschaltet wird beides oben beim Mikrofon — im
+      laufenden Stream sucht man das nicht in einem Reiter. Hier steht nur, wie es
+      sich verhält.</p>
+
+    <p class="hint"><strong>Die Aufnahme endet von selbst</strong>, sobald du eine
+      knappe Sekunde nichts mehr sagst. Halten zum Reden wäre die naheliegendere
+      Bedienung, ist aber nicht zu haben — ein systemweiter Hotkey meldet nur das
+      Drücken, nie das Loslassen. Erkannt wird das Ende am selben Pegel, der auch
+      den Mund bewegt. Deshalb steht er hier gleich mit &mdash; einstellen und dabei
+      zusehen geh&ouml;rt zusammen. Sagst du gar nichts, bricht sie nach vier
+      Sekunden ab.</p>
+    <div class="mic-line">
+      <div class="meter"><div class="meter-fill" id="volBarCo"></div><div class="meter-mark" id="markMidCo"></div><div class="meter-mark" id="markWideCo"></div></div>
+      <div class="status" id="micStatusCo"></div>
+    </div>
+    <div class="row"><label for="thMidCo">Empfindlichkeit</label><input type="range" id="thMidCo" min="1" max="60" value="15"></div>
+    <p class="hint">Derselbe Regler wie <em>Schwelle offen</em> im Reiter
+      <span class="ui"><strong>Stimme</strong></span> &mdash; nur hier, wo du ihn beim
+      Einrichten des Zurufs brauchst. Verstellst du ihn an einer Stelle, steht er an
+      der anderen genauso.</p>
+    <p class="hint"><strong>Nach links</strong> spricht er auf Leiseres an, wartet
+      beim Aufnehmen aber l&auml;nger auf das Ende &mdash; und ein Lüfter oder die Tastatur
+      k&ouml;nnen schon als Reden gelten. <strong>Nach rechts</strong> endet die Aufnahme
+      z&uuml;giger, verschluckt dir aber leise Wortenden. Red einmal normal hinein: Der
+      Balken soll beim Sprechen deutlich &uuml;ber der Markierung stehen und in der
+      Sprechpause darunter fallen.</p>
+    <p class="hint">Redest du dazwischen, während er noch spricht, bricht er ab und
+      hört zu. Dafür muss das Mikrofon laufen — ohne bleibt der Zuruf stumm.</p>
+
+    <!-- Steht am Ende und hinter dem Schalter: Wortliste und Abhören braucht man
+         erst, wenn er etwas falsch verstanden hat — und dann sucht man gezielt.
+         Davor stünde beides nur zwischen Hotkey und Pegel im Weg. -->
+    <h3 class="adv">Wenn er dich falsch versteht</h3>
+    <label class="stack adv" for="sttPrompt">W&ouml;rter, die bei dir vorkommen</label>
+    <textarea id="sttPrompt" rows="2" class="adv"></textarea>
+    <p class="hint adv">Erzwingt nichts, macht die Wörter nur wahrscheinlicher — genau
+      das brauchen Eigennamen und Spieltitel, die eine allgemeine Erkennung nicht
+      erwartet. Trägst du hier ein, was in deinem Stream ständig fällt, verschwinden
+      die meisten Verhörer.</p>
+    <div class="btn-group adv">
+      <button id="sttPlay" class="subtle" disabled>▶ Aufnahme anh&ouml;ren</button>
+      <button id="sttFolderBtn" class="subtle">📁 Whisper-Ordner</button>
+    </div>
+    <p class="hint adv">Versteht er etwas falsch, ist das die erste Frage: Steht das Wort
+      überhaupt verständlich in der Aufnahme? Sonst sucht man den Fehler im Modell,
+      während in Wahrheit der Anfang fehlt oder das Mikrofon zu leise steht.</p>
+  </section>
+
+  <section id="sectionAi" data-tab="comod">
+    <h2>Co-Moderator</h2>
+    <p class="hint">Eine Frage an ein lokales Sprachmodell über
+      <a href="https://ollama.com" target="_blank" rel="noreferrer">Ollama</a>; die
+      Antwort spricht der Avatar aus. Es geht nichts ins Netz.</p>
+    <div class="status" id="aiStatus">wird gesucht…</div>
+    <div class="row"><label for="aiBackend">Anbieter</label><select id="aiBackend">
+      <option value="canned">Vorgefertigte Antworten (ohne KI)</option>
+      <option value="ollama">Ollama (lokal)</option>
+      <option value="openai">OpenAI-kompatibel</option>
+      <option value="anthropic">Anthropic</option>
+    </select></div>
+    <div id="aiCannedBlock">
+      <button id="aiCannedEdit" class="wide subtle">Antwortliste bearbeiten</button>
+      <p class="hint">Ganz ohne Sprachmodell: Der Co-Moderator sucht in einer Liste
+        nach Stichwörtern und antwortet mit einem vorbereiteten Satz. Kein VRAM,
+        keine Wartezeit, keine erfundenen Tatsachen — und du weißt vorher genau,
+        was er sagen kann.</p>
+      <p class="hint">Gesucht wird nach <em>Stichwörtern</em>, nicht nach der genauen
+        Frage: Niemand tippt zweimal dasselbe, und die Spracherkennung schreibt es
+        ohnehin jedes Mal anders. Je Eintrag sind mehrere Antworten möglich, aus
+        denen zufällig gewählt wird — sonst kommt auf dieselbe Frage immer derselbe
+        Satz, und das merkt der Chat sofort.</p>
+      <p class="hint">Der Knopf legt beim ersten Mal eine Kopie der mitgelieferten
+        Liste neben deine Einstellungen und öffnet sie. Deine Fassung gilt dann
+        statt der mitgelieferten und überlebt jedes Update.</p>
+    </div>
+    <div class="row" id="aiUrlRow"><label for="aiUrl">Adresse</label><input type="text" id="aiUrl"></div>
+    <p class="hint">&bdquo;OpenAI-kompatibel&ldquo; ist nicht nur OpenAI: LM Studio, llama.cpp,
+      KoboldCpp, Groq und OpenRouter sprechen dieselbe Schnittstelle. Umgestellt
+      wird &uuml;ber die Adresse, nicht &uuml;ber Code.</p>
+    <p class="hint">Auch <strong>Ollama</strong> hat hier seine Adresse &mdash; ab Werk
+      <code>http://127.0.0.1:11434</code>. &Auml;ndern musst du sie nur in zwei F&auml;llen:
+      Du hast den Port verstellt, oder das Sprachmodell l&auml;uft auf einem
+      <strong>zweiten Rechner</strong>. Letzteres ist der bessere Aufbau, wenn du
+      nebenbei spielst &mdash; dann streiten sich Spiel und Modell nicht um dieselbe
+      Grafikkarte. Trag dann die Adresse dieser Maschine im Heimnetz ein, etwa
+      <code>http://192.168.1.50:11434</code>.</p>
+    <p class="hint">Damit ein Dienst von au&szlig;en erreichbar ist, muss er auch darauf
+      h&ouml;ren: Ollama braucht daf&uuml;r <code>OLLAMA_HOST=0.0.0.0</code>, LM Studio einen
+      Haken im Server-Bereich. Ohne das antwortet er nur sich selbst.</p>
+    <div id="aiKeyBlock">
+      <div class="row"><label for="aiKey">API-Schlüssel</label><input type="password" id="aiKey" placeholder="nur zum Setzen"></div>
+      <div class="status" id="aiKeyState"></div>
+      <div class="btn-group">
+        <button id="aiKeySave" class="subtle">Speichern</button>
+        <button id="aiKeyClear" class="subtle">L&ouml;schen</button>
+      </div>
+      <p class="hint">Der Schlüssel landet <strong>nicht</strong> in der
+        settings.json, sondern verschlüsselt daneben — unter Windows über DPAPI,
+        gebunden an dein Benutzerkonto. Kopiert jemand die Datei auf einen anderen
+        Rechner, ist sie dort wertlos. Zurückgelesen wird er nie, auch nicht ins
+        Panel; hier steht nur, ob einer da ist.</p>
+    </div>
+    <div class="row adv"><label for="aiModel">Modell</label><select id="aiModel"></select></div>
+    <div class="row adv"><label for="aiMaxTokens">H&ouml;chstl&auml;nge</label><input type="number" id="aiMaxTokens" min="20" max="2000" step="10"></div>
+    <div class="row inline adv"><label for="aiThinking">Nachdenken zulassen</label><input type="checkbox" id="aiThinking"></div>
+    <p class="hint adv">Denkmodelle &mdash; Qwen3, DeepSeek-R1 und Verwandte &mdash;
+      &uuml;berlegen erst schriftlich, bevor sie antworten. Das siehst du nicht, es
+      z&auml;hlt aber gegen die H&ouml;chstl&auml;nge dar&uuml;ber. Gemessen an Qwen3.5 in LM Studio:
+      1298 Zeichen Nachdenken, dann Schluss wegen L&auml;nge &mdash; <strong>kein einziges
+      Wort Antwort</strong>, nach 24 Sekunden. Abgeschaltet kam das erste Wort nach
+      395 Millisekunden.</p>
+    <p class="hint adv">Deshalb ist es <strong>aus</strong>. F&uuml;r einen Co-Moderator,
+      der aus der H&uuml;fte antworten soll, ist Nachdenken kein Gewinn, sondern genau
+      die Zeit, in der niemand etwas h&ouml;rt. Anschalten lohnt nur, wenn er wirklich
+      knobeln soll &mdash; und dann geh mit der H&ouml;chstl&auml;nge deutlich hoch.</p>
+    <p class="hint adv">Wirkt nur bei <em>OpenAI-kompatibel</em>. Nicht jeder Dienst
+      hinter dieser Schnittstelle kennt den Schalter; wer ihn nicht kennt, ignoriert
+      ihn.</p>
+    <p class="hint adv">Wie viel er h&ouml;chstens am St&uuml;ck sagen darf. Das ist keine
+      Kostenbremse &mdash; lokal kostet nichts &mdash;, sondern eine <em>Redezeitgrenze</em>:
+      Jedes bisschen wird ausgesprochen, und dazwischenreden kann man ihm nicht.
+      Ohne Grenze redet ein gespr&auml;chiges Modell minutenlang weiter, w&auml;hrend der
+      Chat wartet.</p>
+    <p class="hint adv"><strong>300</strong> sind zwei bis drei S&auml;tze mit Luft. Ein
+      knapper Charakter kommt mit <strong>80</strong> aus &mdash; dann bricht er aber
+      auch mal mitten im Satz ab, und die Stimme spricht den Halbsatz brav zu Ende.
+      Die richtige Zahl h&auml;ngt an Modell und Figur; probier sie hier aus, statt sie
+      zu raten.</p>
+    <div class="row"><label for="streamerName">Wie er dich nennt</label><input type="text" id="streamerName" placeholder="dein Name"></div>
+    <p class="hint">Dein Name im Stream. Damit wei&szlig; er, dass <em>du</em> mit ihm
+      redest &mdash; und nicht jemand aus dem Chat. Ohne ihn behandelt er dich wie
+      einen Zuschauer und spricht &uuml;ber dich in der dritten Person.</p>
+    <p class="hint">Jede Frage bekommt eine Kennzeichnung mit: Zurufe und die
+      Testfrage hier als <code>[STREAMER: dein Name]</code>, Chatfragen als
+      <code>[CHAT: Zuschauername]</code>. Wer wie behandelt wird, schreibst du
+      unten oder in der Charakterdatei.</p>
+
+    <label class="stack" for="aiSystem">Wie er sich verhalten soll</label>
+    <textarea id="aiSystem" rows="5"></textarea>
+    <p class="hint">Die Kürze steht dort nicht aus Höflichkeit: Jeder Satz wird
+      ausgesprochen, und dazwischenreden kann man ihm nicht. Dass er vorgelesen
+      wird, muss ebenfalls drinstehen — sonst kommen Aufzählungen und Sternchen
+      zurück, die die Sprachausgabe brav mitliest.</p>
+    <!-- Eine eigene Markdown-Datei als Charakter ist der zweite Schritt, nicht
+         der erste: Wer noch nicht weiß, wie sein Co-Moderator klingen soll,
+         schreibt ihn oben in fünf Zeilen und nicht in eine Datei daneben. -->
+    <div id="aiPersonaBlock" class="adv">
+      <div class="row"><label>Charakterdatei</label>
+        <button id="aiPersonaPick" class="subtle">w&auml;hlen&hellip;</button>
+        <button id="aiPersonaClear" class="subtle">entfernen</button>
+      </div>
+      <div class="status" id="aiPersonaPath"></div>
+      <div class="status" id="aiPersonaInfo"></div>
+      <button id="aiPersonaShow" class="wide subtle">Zeigen, was ans Modell geht</button>
+      <p class="answer hidden" id="aiPersonaPreview"></p>
+      <p class="hint">Wer die Figur <em>ist</em>, braucht mehr Platz als f&uuml;nf Zeilen
+        und einen richtigen Editor. Eine Markdown-Datei daneben bekommt das Modell
+        <strong>zus&auml;tzlich</strong> zum Text oben &mdash; der bleibt also stehen, und
+        mit ihm die Regeln, die aus dem Vorlesen folgen. Gelesen wird bei jeder Frage
+        frisch: Eine &Auml;nderung wirkt sofort, auch mitten im Stream.</p>
+      <p class="hint">Selten ist so eine Datei von der ersten bis zur letzten Zeile
+        f&uuml;r das Modell bestimmt &mdash; &Uuml;berschrift, Vorwort, eigene Notizen.
+        Steht <code>&lt;!-- start --&gt;</code> oder <code>&lt;!-- ende --&gt;</code>
+        allein auf einer Zeile, geht nur der Text dazwischen hinaus; ohne Marker die
+        ganze Datei. Als HTML-Kommentar, damit die Datei in jedem Editor und auf
+        GitHub unver&auml;ndert aussieht.</p>
+      <p class="hint">Der Knopf zeigt genau den Ausschnitt, der wirklich gefragt wird
+        &mdash; aus derselben Stelle im Code, die auch die Anfrage f&uuml;llt. Eine
+        Vorschau aus zweiter Quelle weicht irgendwann ab, und dann sucht man den
+        Fehler im Modell statt in der Datei.</p>
+      <p class="hint">Ist die Datei beim Fragen nicht lesbar &mdash; umbenannt,
+        Laufwerk weg &mdash;, antwortet er trotzdem, nur ohne Charakter. Hier steht
+        es dann in Rot. Mitten im Stream ist ein neutraler Satz besser als keiner.</p>
+    </div>
+    <div class="row"><label for="aiText">Frage</label><input type="text" id="aiText" value="Wer bist du?"></div>
+    <button id="aiAsk" class="wide primary" disabled>💬 Fragen</button>
+    <p class="answer" id="aiAnswer"></p>
+    <div class="status adv" id="verlaufStatus"></div>
+    <button id="verlaufWeg" class="wide subtle adv">Gespr&auml;ch vergessen</button>
+    <p class="hint adv">Er merkt sich die letzten Wechsel, damit Folgefragen sitzen:
+      Auf <em>&bdquo;Wer bist du?&ldquo;</em> und danach <em>&bdquo;Und wie alt?&ldquo;</em>
+      wei&szlig; er, wovon die Rede ist. Chat und Zuruf teilen sich denselben Verlauf &mdash;
+      sonst w&auml;ren es zwei Gespr&auml;che mit derselben Figur, und sie widerspr&auml;che sich
+      zwischen ihnen.</p>
+    <p class="hint adv">Kurz gehalten mit Absicht: Jede mitgeschickte Zeile muss das
+      Modell lesen, bevor das erste Wort f&auml;llt. Nach zehn Minuten Ruhe f&auml;ngt er von
+      selbst neu an &mdash; sonst bez&ouml;ge er sich zwei Stunden sp&auml;ter auf etwas, das
+      niemand mehr im Kopf hat.</p>
+    <p class="hint">Gesprochen wird satzweise, sobald ein Satz fertig ist — nicht
+      erst am Ende der Antwort. Der Status zeigt beide Zeiten getrennt, weil nur die
+      erste zählt: Wie lange es bis zum <em>letzten</em> Wort dauert, merkt niemand,
+      solange vorne nichts stockt.</p>
+  </section>
+
+  <section data-tab="stimme">
+    <h2>Sprachausgabe</h2>
+    <div class="status" id="ttsStatus">wird gesucht…</div>
+    <p class="hint">Der Avatar spricht geschriebenen Text selbst. Dafür braucht er
+      <a href="https://github.com/rhasspy/piper/releases" target="_blank" rel="noreferrer">Piper</a>
+      — ein eigenständiges Programm, das auf der CPU läuft und der Grafikkarte
+      damit nicht im Weg steht.</p>
+
+    <!-- Die benutzte Stimme steht zuoberst und allein.
+         Darüber lag bis zum 26.08.2026 die Downloadliste, beschriftet mit
+         „Stimme holen" — zwei Felder, beide mit „Stimme" beginnend, eines über
+         dem anderen. Man griff ins falsche, und zwar nicht aus Unachtsamkeit:
+         Beide Beschriftungen versprachen dasselbe. Getrennt wird jetzt zweimal,
+         weil einmal nicht reicht — durch Abstand (das Herunterladen liegt am
+         Ende des Abschnitts) und durch den einfachen Zustand, in dem es gar
+         nicht erst auftaucht. -->
+    <div class="row"><label for="ttsVoice">Stimme</label><select id="ttsVoice"></select></div>
+    <div class="row"><label for="voiceFx">Klangfarbe</label><select id="voiceFx"></select></div>
+    <p class="hint">Piper-Stimmen sind alle menschlich — ein Monster gibt es dort
+      nicht zu wählen. Die Klangfarbe rechnet die fertige Stimme um: tiefer, rauer,
+      mit Grollen in der Kehle. Tiefer wird sie über die Abspielgeschwindigkeit;
+      damit sie dabei nicht schleppend wird, spricht Piper im selben Maß schneller.
+      Alle Stufen sind maßvoll gehalten — ein Co-Moderator, den man nicht versteht,
+      ist nutzlos.</p>
+
+    <div class="row"><label for="ttsText">Text</label><input type="text" id="ttsText" value="Hallo, ich bin dein Co-Moderator."></div>
+    <button id="ttsSay" class="wide primary" disabled>🗣 Sprechen</button>
+    <p class="hint">Längerer Text wird satzweise gesprochen: Der erste Satz läuft
+      schon, während der zweite noch erzeugt wird. Sonst stünde am Anfang eine
+      mehrsekündige Stille — und genau daran entscheidet sich später, ob sich eine
+      Antwort im Stream lebendig anfühlt oder wie ein Ladebalken.</p>
+
+    <!-- Stimmen holen, ohne Hugging Face zu kennen. Das war der Schritt, an dem
+         ein normaler Nutzer ausstieg — und ohne Stimme bleibt der halbe
+         Co-Moderator stumm. -->
+    <h3 class="adv">Mehr Stimmen holen</h3>
+    <div class="row adv"><label for="voiceGet">Welche</label><select id="voiceGet"></select></div>
+    <button id="voiceGetBtn" class="wide adv">⬇ Diese Stimme herunterladen</button>
+    <div class="status adv" id="voiceGetStatus"></div>
+    <p class="hint adv">Der Knopf lädt eine Stimme auf deinen Rechner &mdash; mehr
+      nicht. <strong>Gesprochen wird weiter mit der, die oben unter
+      <em>Stimme</em> steht.</strong> Die neue taucht dort nach dem Laden mit auf,
+      und erst wenn du sie dort ausw&auml;hlst, ist sie im Einsatz. Ein Konto
+      brauchst du daf&uuml;r nicht.</p>
+
+    <h3 class="adv">Stimme aus der Cloud</h3>
+    <div id="cloudBlock" class="adv">
+      <div class="row"><label for="cloudAnbieter">Dienst</label><select id="cloudAnbieter">
+        <option value="">aus (nur lokale Stimmen)</option>
+      </select></div>
+      <div class="row" id="cloudRegionRow"><label for="cloudRegion">Region</label><input type="text" id="cloudRegion" placeholder="z.B. westeurope"></div>
+      <div class="row"><label for="cloudKey">API-Schl&uuml;ssel</label><input type="password" id="cloudKey" placeholder="nur zum Setzen"></div>
+      <div class="status" id="cloudStatus"></div>
+      <div class="btn-group">
+        <button id="cloudKeySave" class="subtle">Speichern</button>
+        <button id="cloudKeyClear" class="subtle">L&ouml;schen</button>
+      </div>
+      <p class="hint">Piper klingt sauber, aber flach &mdash; es ist auf Tempo bei
+        winzigen Modellen gebaut. Wer eine Figur will, die wirklich lebt, kommt an
+        einem Dienst kaum vorbei. <strong>Bezahlt wird nicht von dieser App</strong>,
+        sondern von dir mit deinem eigenen Schl&uuml;ssel.</p>
+      <p class="hint"><strong>ElevenLabs</strong> kann Figurenstimmen und eigene
+        Klone &mdash; die richtige Wahl, wenn der Co-Moderator ein Charakter sein soll.
+        <strong>Azure</strong> ist um ein Vielfaches g&uuml;nstiger und sehr
+        zuverl&auml;ssig, klingt daf&uuml;r nach Nachrichtensprecher. Azure braucht
+        zus&auml;tzlich die Region deiner Ressource.</p>
+      <p class="hint">Sobald der Schl&uuml;ssel steht, stehen die Stimmen des Dienstes
+        <em>oben in derselben Liste</em> wie die lokalen &mdash; deine geklonten
+        eingeschlossen. Es gibt nichts zu kopieren.</p>
+      <p class="hint"><strong>Damit geht Text ins Netz.</strong> Nur der Satz, der
+        gesprochen werden soll, und nur an den gew&auml;hlten Dienst &mdash; aber er
+        verl&auml;sst deinen Rechner. Alles andere bleibt hier: Mikrofon,
+        Spracherkennung und die lokalen Stimmen.</p>
+      <button id="cloudCacheBtn" class="wide subtle">Zwischenspeicher leeren</button>
+      <p class="hint">Jeder gesprochene Satz wird behalten. Sagt der Co-Moderator
+        denselben Satz noch einmal, kostet er weder Guthaben noch Wartezeit. Leeren
+        musst du nur, wenn du dieselbe Stimme anders klingen lassen willst.</p>
+    </div>
+
+    <!-- Wohin der Ton geht. Ohne das läuft die Stimme über dasselbe Gerät wie
+         Musik, Discord und Browser — OBS bekommt sie dann nur im Desktop-Ton
+         mitgemischt, und auf eine eigene Spur legen kann man nur, was auch
+         getrennt herauskommt. -->
+    <h3 class="adv">Ausgabeger&auml;t</h3>
+    <div class="row adv"><label for="voiceSink">Ger&auml;t</label><select id="voiceSink"></select></div>
+    <div class="row inline adv"><label for="voiceMonitor">Zusätzlich selbst mithören</label><input type="checkbox" id="voiceMonitor" checked></div>
+    <div class="status adv" id="voiceSinkStatus"></div>
+    <p class="hint adv">Standard ist das Gerät, auf dem auch alles andere läuft — dort
+      ist die Stimme in OBS nicht mehr von Musik und Discord zu trennen. Wählst du
+      hier ein eigenes Gerät, üblicherweise ein virtuelles Kabel wie
+      <a href="https://vb-audio.com/Cable/" target="_blank" rel="noreferrer">VB-Cable</a>,
+      geht <em>nur</em> die Stimme des Avatars dorthin: In OBS eine
+      <em>Audioeingabeaufnahme</em> auf dieses Kabel legen und in den erweiterten
+      Audioeigenschaften auf eine eigene Spur schalten. Der Haken darüber schickt
+      sie zusätzlich auf deine Lautsprecher, damit du selbst hörst, was er sagt.
+      Der Weg über ein eigenes Gerät kostet ein paar Millisekunden mehr als der
+      Standardweg; für die Lippen liegt das unter dem, was man sieht. Fällt es
+      dir doch auf, gleicht der <em>Sync-Versatz</em> der Quelle in OBS es aus.</p>
+
+    <!-- Ordner, Neusuche und die Testdatei sind Einrichtung und Fehlersuche:
+         einmal angefasst, dann monatelang nicht mehr. Eigene Aufnahmen stehen
+         mit hier, weil sie über denselben Ordnerweg laufen — eine Synthese ist
+         nie so gut wie eine echte Stimme, und für Sätze, die immer gleich
+         kommen, ist eine Aufnahme der kürzeste Weg zu etwas, das nicht nach
+         Maschine klingt. -->
+    <h3 class="adv">Ordner &amp; Dateien</h3>
+    <div class="status adv" id="recStatus"></div>
+    <div class="btn-group adv">
+      <button id="recFolderBtn" class="subtle">📁 Aufnahmen</button>
+      <button id="ttsFolderBtn" class="subtle">📁 Piper</button>
+    </div>
+    <div class="btn-group adv">
+      <button id="refreshAll" class="subtle">🔄 Neu suchen</button>
+      <button id="voiceTest" class="subtle">🔊 Testdatei…</button>
+    </div>
+    <input type="file" id="voiceFile" accept="audio/*" class="hidden">
+    <div class="status adv" id="voiceStatus"></div>
+    <p class="hint adv">Sprich einen Satz selbst ein und leg ihn als WAV in den
+      <em>Aufnahmen</em>-Ordner — der Co-Moderator nimmt dann deine Aufnahme statt
+      der Synthese. Der Dateiname <em>ist</em> der Satz, auf Buchstaben und Ziffern
+      eingekocht; wie er lauten muss, steht oben, sobald du den Text eintippst. Eine
+      Aufnahme läuft unbearbeitet, ohne Klangfarbe — sie ist ja schon die Stimme, die
+      du wolltest. Das gilt für jeden Satz, auch für die vorgefertigten Antworten.</p>
+    <p class="hint adv">In den <em>Piper</em>-Ordner gehören <code>piper.exe</code> (ein
+      Unterordner darin ist auch in Ordnung, das Archiv bringt einen mit) und
+      mindestens eine Stimme — die besteht immer aus zwei Dateien, <code>…onnx</code>
+      und <code>…onnx.json</code>. Fehlt die zweite, startet Piper nicht, deshalb zählt
+      eine Stimme hier erst als vorhanden, wenn beide da sind. Nach dem Hineinlegen
+      hilft ein Neustart.</p>
+    <p class="hint adv"><em>Testdatei</em> schickt eine beliebige Audiodatei durch den
+      Weg, den auch die Stimme nimmt — damit lässt sich die Lippenbewegung prüfen,
+      ohne dass Piper schon steht.</p>
+  </section>
+
+  <section data-tab="stimme" class="adv">
+    <h2>Lippen &amp; Stimme</h2>
+    <p class="hint">Ein- und ausgeschaltet wird das Mikrofon oben; hier steht, wie es ausgewertet wird.</p>
+    <div class="row adv"><label for="micGain">Verstärkung</label><input type="range" id="micGain" min="1" max="25" value="5"></div>
+    <p class="hint">Hebt das Signal an, bevor die Schwellen greifen. Wenn der Balken beim normalen Reden kaum ausschlägt, hier hochdrehen, bis er etwa die Hälfte erreicht.</p>
+    <div class="row adv"><label for="voiceGain">Verstärkung Ausgabe</label><input type="range" id="voiceGain" min="1" max="25" value="5"></div>
+    <p class="hint">Dasselbe für den Ton, den der Avatar <em>selbst</em> spricht — Testdatei oben, später die Stimme der KI. Der braucht eine eigene Zahl: dein Mikrofon ist auf deine Stimme und deinen Vorverstärker eingestellt, eine abgespielte Datei kommt mit einem ganz anderen, dafür immer gleichen Pegel. Die Schwellen darunter gelten für beide.</p>
+    <div class="row"><label for="thMid">Schwelle offen</label><input type="range" id="thMid" min="1" max="60" value="15"></div>
+    <div class="row"><label for="thWide">Schwelle weit</label><input type="range" id="thWide" min="2" max="95" value="50"></div>
+    <p class="hint">Ab der ersten Schwelle gilt es als Reden, ab der zweiten geht der Mund weit statt nur halb auf. Die Markierungen im Balken zeigen, wo sie liegen.</p>
+    <div class="row"><label for="talkRate">Sprechtempo</label><input type="range" id="talkRate" min="0" max="100" value="50"></div>
+    <p class="hint">Solange geredet wird, geht der Mund im Silbentakt auf und gleich wieder zu — er bleibt also nicht den ganzen Satz über offen stehen. Der Regler bestimmt das Tempo (links gut 3, rechts gut 7 Silben pro Sekunde), die Lautstärke nur noch, wie weit er dabei aufgeht. Jede Silbe ist um ±30 % gestreut und wird gelegentlich gedehnt, damit es nicht nach Metronom aussieht.</p>
+    <div class="row"><label for="sustainSens">Gezogene Töne halten</label><input type="range" id="sustainSens" min="0" max="100" value="50"></div>
+    <p class="hint">Ziehst du ein Wort in die Länge („neeeein"), setzt der Silbentakt aus und der Mund bleibt offen, bis du aufhörst. Erkannt wird das nicht an der Lautstärke, sondern an ihrer Ruhe: ein gehaltener Vokal liegt konstant, normales Sprechen wackelt bei jeder Silbe. Der Balken oben färbt sich <b>gelb</b>, solange es greift — damit lässt sich der Regler einstellen. Nach rechts spricht es früher und bereitwilliger an (auch mal fälschlich mitten im Satz), nach links nur bei sehr ruhigen Tönen, 0 schaltet es ab.</p>
+    <div class="row"><label for="mouthHold">Mindest-Haltezeit</label><input type="range" id="mouthHold" min="0" max="250" value="55"></div>
+    <p class="hint">Untergrenze für jedes Mundbild — verhindert Zucken bei hohem Tempo. Zu hoch eingestellt bremst sie das Sprechtempo aus: mehr als eine Phase je Haltezeit geht nicht.</p>
+  </section>
+
+  <section data-tab="figur" class="adv">
+    <h2>Augen</h2>
+    <div class="row inline"><label for="blinkOn">Automatisch blinzeln</label><input type="checkbox" id="blinkOn" checked></div>
+    <div class="row"><label for="blinkMin">Intervall min (s)</label><input type="range" id="blinkMin" min="1" max="12" value="3" step="0.5"></div>
+    <div class="row"><label for="blinkMax">Intervall max (s)</label><input type="range" id="blinkMax" min="2" max="20" value="8" step="0.5"></div>
+    <div class="row"><label for="blinkDur">Dauer (ms)</label><input type="range" id="blinkDur" min="60" max="260" value="120"></div>
+    <div class="row"><label for="doubleBlink">Doppelblinzeln</label><input type="range" id="doubleBlink" min="0" max="100" value="25"></div>
+    <button id="testBlink" class="wide subtle">Test-Blinzeln</button>
+
+    <h3>Zwinkern</h3>
+    <div class="row"><label for="winkMs">Dauer (ms)</label><input type="range" id="winkMs" min="150" max="2000" step="50" value="700"></div>
+    <div class="row"><label for="hkWink">Hotkey</label><input type="text" class="hotkey" id="hkWink" readonly value="Control+Alt+5"></div>
+    <button id="testWink" class="wide subtle">Test-Zwinkern</button>
+    <p class="hint">Zwinkern läuft auf Zuruf statt automatisch — Hotkey drücken, ein Auge bleibt für die eingestellte Dauer zu. Welches Auge sich schließt, entscheidet allein dein Sprite in der Rolle „Augen zwinkern“. Fehlt es, blinzelt der Avatar stattdessen mit beiden Augen.</p>
+  </section>
+
+  <section data-tab="figur" class="adv">
+    <h2>Bewegung</h2>
+    <div class="row inline"><label for="soloCenter">Einzelne Figur mittig</label><input type="checkbox" id="soloCenter"></div>
+    <p class="hint">Ist nur eine Figur zu sehen, steht sie in der Mitte statt an
+      ihrer Seitenposition. „Position X" beschreibt ja, wo eine Figur <em>neben</em>
+      der anderen sitzt — allein wäre das eine Figur, die ohne erkennbaren Grund
+      aus der Mitte gerückt ist. Gilt für alle Figuren gemeinsam; abschalten, wenn
+      du eine einzelne bewusst am Rand haben willst.</p>
+
+    <div class="row"><label for="breathAmp">Atmen Stärke</label><input type="range" id="breathAmp" min="0" max="40" value="12"></div>
+    <div class="row"><label for="breathRate">Atmen Tempo</label><input type="range" id="breathRate" min="20" max="200" value="70"></div>
+    <div class="row"><label for="swayAmp">Schwanken</label><input type="range" id="swayAmp" min="0" max="40" value="8"></div>
+    <div class="row"><label for="bounceAmp">Sprech-Bounce</label><input type="range" id="bounceAmp" min="0" max="60" value="22"></div>
+    <div class="row"><label for="loudLift">Lautstärke-Hub</label><input type="range" id="loudLift" min="0" max="60" value="14"></div>
+    <p class="hint">Atmen und Schwanken laufen dauerhaft. Der Bounce ist ein Stoß beim Einsetzen der Stimme, der Hub hebt den Avatar bei lauten Stellen.</p>
+  </section>
+
+  <section data-tab="fenster">
+    <h2>Fenster &amp; Ausgabe</h2>
+    <div class="row">
+      <label for="bgMode">Hintergrund</label>
+      <select id="bgMode">
+        <option value="green">Grün (Chroma-Key)</option>
+        <option value="transparent">Transparent</option>
+        <option value="custom">Eigene Farbe</option>
+      </select>
+    </div>
+    <div class="row" id="bgColorRow">
+      <label for="bgColor">Farbe</label>
+      <input type="color" id="bgColor" value="#00ff00">
+    </div>
+    <p class="hint">Grün ist der sichere Weg: in OBS Fensteraufnahme plus Chroma-Key-Filter. Transparent spart den Filter, klappt aber nicht mit jeder OBS-Aufnahmemethode.</p>
+
+    <div class="row"><label for="winW">Breite</label><input type="number" id="winW" min="200" max="3000" step="10"></div>
+    <div class="row"><label for="winH">Höhe</label><input type="number" id="winH" min="200" max="3000" step="10"></div>
+    <div class="row inline"><label for="onTop">Immer im Vordergrund</label><input type="checkbox" id="onTop" checked></div>
+    <p class="hint">Ohne „Immer im Vordergrund" verschwindet der Avatar hinter jedem Fenster, das du davor legst. Er animiert trotzdem in voller Bildrate weiter — auch verdeckt, auch ohne Fokus — und die OBS-Fensteraufnahme nimmt ihn dabei ganz normal auf.</p>
+    <p class="hint">Wichtig: Das Spiel muss im randlosen Fenster laufen, im exklusiven Vollbild lässt Windows gar kein Overlay zu.</p>
+  </section>
+
+  <section data-tab="fenster">
+    <h2>Bedienung &amp; Hotkeys</h2>
+    <!-- Abschaltbar, aber nicht auf dem Präsentierteller: Die Leiste ist der
+         Weg zurück ins geschlossene Panel. Wer sie ausschaltet, ohne den Hotkey
+         zu kennen, hat sich ausgesperrt. -->
+    <div class="row inline adv"><label for="hoverBar">Leiste beim Überfahren zeigen</label><input type="checkbox" id="hoverBar" checked></div>
+    <p class="hint">Fährst du mit der Maus an den <b>oberen Rand</b> des Avatars, erscheint dort eine schmale Leiste mit „Menü" und „Programm beenden"; nimmst du die Maus weg, ist sie sofort wieder verschwunden — aufgenommen wird sie also nie. Nur dieser Streifen von 28 Pixeln nimmt Klicks an, der ganze Rest des Fensters bleibt für die Maus durchlässig. Wenn dich das im Spiel doch stört, hier abschalten: dann führt der Hotkey unten oder das Symbol im Infobereich der Taskleiste zurück ins Panel.</p>
+    <p class="hint">Liegt ein anderes Fenster über dem Avatar, bleibt die Leiste weg — auch wenn die Maus rechnerisch über ihm steht. Sie geht nur auf, wenn der Avatar an dieser Stelle wirklich obenauf liegt.</p>
+    <p class="hint">Sobald das Panel zu ist, lässt das Fenster die Maus komplett durch: keine Klicks, keine Mausüberwachung. Spiele merken vom Avatar nichts — auch solche, die den Cursor selbst zeichnen. Verschieben lässt sich das Fenster am freien Teil der Leiste.</p>
+
+    <p class="hint">Hotkeys sind systemweit — sie funktionieren auch, wenn ein Spiel im Vordergrund ist. Feld anklicken und Tastenkombination drücken; Rücktaste löscht die Belegung. Beliebig viele Zusatztasten sind erlaubt, etwa <b>Strg+Alt+Umschalt+X</b>. Die übrigen Hotkeys stehen dort, wo sie wirken: die der Posen bei „Posen &amp; Gesten“, der fürs Zwinkern bei „Augen“.</p>
+    <div class="row"><label for="hkPanel">Panel ein/aus</label><input type="text" class="hotkey" id="hkPanel" readonly value="Control+Alt+P"></div>
+    <p class="hint">Der Hotkey ist der zweite Weg zurück ins geschlossene Panel, neben der Leiste oben und dem Tray-Symbol. Klappt die Registrierung nicht und ist auch die Leiste abgeschaltet, hält die App das Panel offen.</p>
+    <div class="status" id="hkStatus"></div>
+  </section>
+
+  <!-- Beenden am Fu&szlig; des Panels, nicht im Kopf: Oben sitzt das ✕, das nur das
+       Panel zuklappt. Zwei Kreuze nebeneinander liest niemand auseinander, und
+       wer sich vertut, schie&szlig;t sich mitten im Stream die App ab. Ganz unten
+       kommt man nur absichtlich hin.
+
+       Steht au&szlig;erhalb der Reiter und ist deshalb in jedem sichtbar. Der Knopf
+       in der Leiste oben bleibt daneben bestehen &mdash; er ist der Weg, wenn das
+       Panel zu ist. -->
+  <div id="panelFuss">
+    <button id="quitBtn" class="wide danger">✕ Programm beenden</button>
+  </div>
+
+</aside>
+
+<!-- Erst three.js (gebündelt aus three-view.js), dann app.js: Beim Start
+     fragt app.js, ob es 3D gibt. -->
+<script src="three-bundle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,565 @@
+:root{
+  --panel:#15171d;
+  --panel-2:#1e212a;
+  --line:#2b2f3a;
+  --text:#e8e8ea;
+  --muted:#8b8d97;
+  --accent:#f7931e;
+  --accent2:#3ddc97;
+  --danger:#ff5c5c;
+}
+
+*{box-sizing:border-box;}
+
+html,body{
+  margin:0;
+  height:100%;
+  overflow:hidden;
+  background:transparent;
+  font-family:'Segoe UI', system-ui, sans-serif;
+  color:var(--text);
+  /* the window is frameless; only the explicit drag handle should move it */
+  -webkit-app-region:no-drag;
+  user-select:none;
+}
+
+/* ---------- stage ---------- */
+
+#stage{
+  position:absolute;
+  inset:0;
+  display:block;
+}
+
+#canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  image-rendering:pixelated;
+}
+
+/* ---------- Bedienleiste ----------
+   Ein Streifen am oberen Rand mit „Menü" und „Beenden". Sichtbar nur, solange
+   die Maus über dem Fenster liegt (body.hover, vom Hauptprozess gesetzt) oder
+   das Panel ohnehin offen ist — im Stream ist damit nie etwas davon zu sehen.
+   Die Höhe hier muss zu BAR_H in main.js passen: nur dieser Streifen fängt bei
+   geschlossenem Panel die Maus ab. */
+#toolbar{
+  position:absolute;
+  top:0; left:0; right:0;
+  height:28px;
+  display:flex;
+  align-items:stretch;
+  gap:1px;
+  z-index:20;
+  background:rgba(16,18,24,.88);
+  border-bottom:1px solid rgba(255,255,255,.10);
+  opacity:0;
+  transform:translateY(-100%);
+  transition:opacity .12s, transform .12s;
+  pointer-events:none;
+}
+body.hover #toolbar,
+body.panel-open #toolbar{
+  opacity:1;
+  transform:none;
+  pointer-events:auto;
+}
+/* Beim Kalibrieren zieht man Rahmen bis an die Oberkante — da darf die Leiste
+   weder im Weg liegen noch das Fenster verschieben. */
+body.calibrating #toolbar{ display:none; }
+/* Bei offenem Panel führt „Menü" nirgendwohin; die Ziehfläche bleibt. */
+body.panel-open #tbMenu{ display:none; }
+
+#toolbar button{
+  -webkit-app-region:no-drag;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  color:var(--text);
+  font-size:11px;
+  padding:0 12px;
+  letter-spacing:.3px;
+}
+#toolbar button:hover{ background:rgba(247,147,30,.22); border:none; }
+#toolbar button.danger:hover{ background:rgba(255,92,92,.22); color:var(--danger); }
+
+/* Der Rest der Leiste ist die Ziehfläche. Mit Mindestbreite: `flex:1` allein
+   lässt sie auf null schrumpfen, sobald die Knöpfe die Leiste füllen — und
+   dann gibt es hier nichts mehr zum Anfassen. Die Knöpfe dürfen dafür lieber
+   etwas gestaucht werden. */
+#tbDrag{
+  flex:1 0 90px;
+  min-width:90px;
+  -webkit-app-region:drag;
+  cursor:move;
+}
+/* Bei offenem Panel liegt das Panel über der rechten Hälfte der Leiste. Die
+   Ziehfläche wandert deshalb nach vorn, damit sie im sichtbaren Teil links
+   liegt und nicht unter dem Panel verschwindet. */
+body.panel-open #tbDrag{ order:-1; }
+
+/* ---------- panel ---------- */
+
+#panel{
+  position:absolute;
+  top:0; right:0; bottom:0;
+  width:330px;
+  background:var(--panel);
+  border-left:1px solid var(--line);
+  overflow-y:auto;
+  padding:0 16px 16px;
+  z-index:30;
+  box-shadow:-8px 0 24px rgba(0,0,0,.45);
+}
+#panel.hidden{ display:none; }
+
+/* Kopfblock: Titel, Beenden und das Mikrofon. Bleibt beim Scrollen stehen —
+   das sind die Knöpfe, die man mitten im Stream braucht, und die dürfen nicht
+   irgendwo in einer langen Liste liegen. */
+#panelTop{
+  position:sticky;
+  top:0;
+  background:var(--panel);
+  padding:12px 0 10px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:4px;
+  z-index:3;
+}
+
+/* Die Titelzeile des Panels zieht das Fenster — wie eine gewöhnliche
+   Fensterleiste, und aus einem handfesten Grund: Die Ziehfläche oben
+   (#tbDrag) ist der freie Rest der Bedienleiste, und bei offenem Panel liegt
+   das Panel über deren rechter Hälfte. Bleibt das Fenster schmal, schrumpft
+   der Rest auf null, und das Fenster ließ sich überhaupt nicht mehr
+   verschieben. Hier gibt es immer eine Fläche, und sie liegt dort, wo man sie
+   sucht. */
+#panel header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-bottom:8px;
+  -webkit-app-region:drag;
+  cursor:move;
+}
+
+.head-actions{
+  display:flex;
+  align-items:center;
+  gap:2px;
+  flex:0 0 auto;
+  -webkit-app-region:no-drag;   /* sonst schluckt die Ziehfläche die Knöpfe */
+  cursor:default;
+}
+/* Nicht umbrechen: Der Kopf ist schmal, und ein Knopf, dessen Beschriftung auf
+   zwei Zeilen fällt, schiebt die ganze Zeile auseinander. */
+.head-actions button{ padding:4px 8px; font-size:11px; white-space:nowrap; }
+#panel header h1{ white-space:nowrap; }
+/* Die Version steht neben dem Namen, aber im Hintergrund: Man braucht sie beim
+   Fehlermelden und beim Aktualisieren - sonst nie. Klein und leise, damit sie
+   den Kopf nicht auseinanderzieht. */
+#appVersion{
+  font-size:10px;
+  font-weight:400;
+  color:var(--muted);
+  letter-spacing:.2px;
+  vertical-align:baseline;
+}
+
+#panelTop #micBtn{ margin-top:0; }
+
+/* Pegel und Statustext nebeneinander: spart im festen Kopfblock eine Zeile. */
+.mic-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:6px;
+}
+.mic-line .meter{ flex:1; margin:0; }
+.mic-line .status{ margin-top:0; flex:0 0 auto; max-width:52%; }
+
+h1{
+  font-size:15px;
+  margin:0;
+  color:var(--accent);
+  letter-spacing:.4px;
+}
+
+h2{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  color:var(--muted);
+  margin:18px 0 8px;
+  border-bottom:1px solid var(--line);
+  padding-bottom:5px;
+}
+
+section{ margin:0; }
+
+h3{
+  font-size:11px;
+  font-weight:600;
+  color:#c9cbd3;
+  margin:14px 0 2px;
+}
+
+.hint{
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.5;
+  margin:5px 0 9px;
+}
+
+code{
+  background:#0d0f14;
+  padding:1px 5px;
+  border-radius:4px;
+  font-size:10px;
+}
+
+.row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:7px 0;
+  font-size:12px;
+}
+.row label{ flex:1; color:#c9cbd3; }
+.row.inline label{ flex:1; }
+
+input[type=range]{ flex:1.1; accent-color:var(--accent); min-width:0; }
+input[type=checkbox]{ accent-color:var(--accent); width:16px; height:16px; }
+input[type=color]{
+  width:52px; height:26px; padding:0;
+  background:none; border:1px solid var(--line); border-radius:5px; cursor:pointer;
+}
+/* Alle Eingabefelder, nicht einzeln aufgezaehlte.
+
+   Vorher stand hier eine Liste aus vier IDs — und jedes Feld, das spaeter
+   dazukam, blieb weiss: Der Browser-Standard schlug durch, mitten in einem
+   dunklen Panel. Am sichtbarsten beim Namen einer Geste, der gar keine ID hat,
+   weil ihn der Renderer erzeugt. Eine Aufzaehlung, die man beim Hinzufuegen
+   pflegen muss, wird irgendwann nicht gepflegt. */
+input[type=text], input[type=password], input[type=number], input[type=search],
+input[type=url], input[type=email], select, input.hotkey{
+  flex:1.1;
+  min-width:0;
+  background:#0d0f14;
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:5px 6px;
+  font-size:12px;
+  font-family:inherit;
+}
+input.hotkey{ cursor:pointer; text-align:center; letter-spacing:.3px; }
+input.hotkey.listening{ border-color:var(--accent); color:var(--accent); }
+
+/* Mehrzeiliges steht über die ganze Breite statt neben einer Beschriftung: Eine
+   Verhaltensbeschreibung ist länger als ein Zahlenfeld, und in der halben Spalte
+   einer .row sähe man drei Wörter je Zeile. */
+label.stack{ display:block; font-size:12px; color:var(--muted); margin:8px 0 4px; }
+textarea{
+  width:100%;
+  box-sizing:border-box;
+  resize:vertical;
+  background:#0d0f14;
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:5px;
+  padding:6px 7px;
+  font-size:12px;
+  font-family:inherit;
+  line-height:1.45;
+}
+
+/* Die Antwort, während sie entsteht. Die Mindesthöhe steht hier, damit das Panel
+   nicht bei jedem Wort nachrutscht, solange der Text wächst. */
+.answer{
+  min-height:2.6em;
+  margin:8px 0 0;
+  padding:7px 9px;
+  border-left:2px solid var(--accent2);
+  background:rgba(255,255,255,.03);
+  border-radius:0 5px 5px 0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--text);
+  white-space:pre-wrap;
+}
+
+button{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:7px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+  font-family:inherit;
+  transition:.13s;
+}
+button:hover{ background:#282c37; border-color:var(--accent); }
+button.wide{ width:100%; margin-top:6px; }
+button.primary{ background:var(--accent); color:#20140a; border-color:var(--accent); font-weight:600; }
+button.primary:hover{ filter:brightness(1.1); }
+button.stop{ background:var(--danger); border-color:var(--danger); color:#2a0a0a; font-weight:600; }
+button.subtle{ background:transparent; color:var(--muted); }
+button.subtle:hover{ color:var(--text); }
+button.danger:hover{ border-color:var(--danger); color:var(--danger); }
+button.icon{
+  width:24px; height:24px; padding:0;
+  background:transparent; border:none; color:var(--muted); font-size:13px;
+}
+button.icon:hover{ color:var(--text); background:transparent; }
+
+/* Umbruch statt Überlauf: die Posenliste kann beliebig lang werden, und ein
+   fünfter Knopf darf das Panel nicht seitlich aufziehen. */
+.btn-group{ display:flex; flex-wrap:wrap; gap:5px; margin:6px 0; }
+.btn-group button{ flex:1 1 auto; min-width:88px; }
+.btn-group button.active{
+  background:var(--accent2); color:#04241a; border-color:var(--accent2); font-weight:600;
+}
+
+/* Reiter sind die Gliederung, keine Bedienung unter vielen — deshalb tragen sie
+   nicht dieselbe grüne Füllung wie die Zustandsknöpfe darüber. Im Kopfbereich
+   standen drei gefüllte Reihen übereinander (wer ist zu sehen, welche Figur,
+   welcher Reiter) und sahen aus wie drei gleichrangige Entscheidungen. Zwei
+   davon sind Zustand, eine ist Navigation; die bekommt hier den flachen
+   Unterstrich, den man von Reitern kennt. */
+.tabs{ margin:10px 0 0; gap:0; border-bottom:1px solid var(--line); }
+.tabs button{
+  padding:7px 4px;
+  font-size:12px;
+  min-width:0;
+  background:transparent;
+  border:none;
+  border-bottom:2px solid transparent;
+  border-radius:0;
+  color:var(--muted);
+  margin-bottom:-1px;   /* der eigene Strich deckt den der Leiste */
+}
+.tabs button:hover{
+  background:transparent;
+  color:var(--text);
+  border-bottom-color:var(--line);
+}
+.tabs button.active{
+  background:transparent;
+  color:var(--accent);
+  border-bottom-color:var(--accent);
+  font-weight:600;
+}
+
+/* Erklärungen liegen eingeklappt. Sie sind nicht weg — das Fragezeichen in jeder
+   Überschrift holt sie zurück —, aber sie machten gut die Hälfte des Panels aus,
+   und man stolperte über Begründungen, nach denen man nicht gesucht hatte. */
+section .hint{ display:none; }
+body.help-on section .hint{ display:block; }
+
+section h2{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+button.help{
+  width:20px; height:20px; padding:0; flex:0 0 auto;
+  border-radius:50%;
+  font-size:11px; font-weight:700; line-height:1;
+  background:transparent; color:var(--muted);
+  border:1px solid var(--line);
+}
+button.help:hover{ color:var(--text); border-color:var(--accent); background:transparent; }
+button.help.active{ color:#04241a; background:var(--accent2); border-color:var(--accent2); }
+
+/* Der Rollenschalter steht bewusst ganz oben und trägt mehr Gewicht als die
+   übrigen Knopfgruppen: Er entscheidet nicht über eine Kleinigkeit, sondern
+   darüber, wessen Gesicht im Stream steht. */
+.role-switch{ margin:10px 0 4px; }
+.role-switch button{
+  padding:9px 8px;
+  font-size:13px;
+  font-weight:600;
+}
+
+/* Was zur zweiten Person gehört, wird als VTuber sichtbar zurückgenommen statt
+   still wirkungslos zu sein. Ein Knopf, der nichts tut, ist schlimmer als einer,
+   dem man ansieht, dass er gerade nicht dran ist. Bedienbar bleibt alles —
+   einstellen darf man auch, was gerade nicht läuft. */
+section.dimmed{ opacity:.45; }
+section.dimmed:hover{ opacity:.8; }
+
+/* Eine Karte je Pose. Der Rahmen ist die einzige Stelle, an der man ohne Lesen
+   erkennt, ob etwas stehen bleibt oder abläuft — dieselbe Sprache wie bei den
+   Knöpfen oben. */
+.pose-card{
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:8px 10px 4px;
+  margin-bottom:8px;
+  background:rgba(255,255,255,.02);
+}
+.pose-card .row:first-child input[type=text]{ font-weight:600; }
+
+/* Zahl neben jedem Schieberegler. Feste Mindestbreite, damit die Regler nicht
+   springen, wenn aus 99 eine 100 wird. */
+.value{
+  font-size:11px;
+  color:var(--muted);
+  min-width:34px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Gesten (laufen ab) gestrichelt, haltende Posen durchgezogen. */
+#poseButtons button.gesture{ border-style:dashed; }
+
+.meter{
+  position:relative;
+  height:12px;
+  background:#0d0f14;
+  border:1px solid var(--line);
+  border-radius:6px;
+  overflow:hidden;
+  margin:8px 0 4px;
+}
+.meter-fill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  transition:width .04s linear;
+}
+/* Solange ein Ton als gezogen erkannt wird — macht die Erkennung einstellbar. */
+.meter-fill.sustain{ background:#ffd24a; }
+.meter-mark{
+  position:absolute;
+  top:0; bottom:0;
+  width:2px;
+  background:rgba(255,255,255,.55);
+}
+
+.status{
+  font-size:11px;
+  color:var(--muted);
+  margin-top:4px;
+  min-height:14px;
+}
+/* Ein Dutzend Statuszeilen im Panel sagt erst etwas, wenn man etwas angefasst
+   hat. Reservierte Höhe ist dort keine Ruhe, sondern ein Loch zwischen zwei
+   Bedienelementen, das nach einem fehlenden Text aussieht. */
+.status:empty{ min-height:0; margin-top:0; }
+.status.ok{ color:var(--accent2); }
+.status.warn{ color:var(--accent); }
+.status.err{ color:var(--danger); }
+
+/* Warnung ganz oben im Panel — betrifft die Bedienbarkeit, nicht nur eine
+   Einstellung, und darf deshalb nicht wie ein Hinweistext untergehen. */
+.warnbox{
+  border:1px solid var(--accent);
+  border-left-width:3px;
+  border-radius:4px;
+  background:rgba(247,147,30,.10);
+  color:var(--text);
+  padding:8px 10px;
+  margin:0 0 12px;
+}
+.warnbox.hidden{ display:none; }
+
+/* Alles mit `adv` ist Einrichtung und liegt im einfachen Zustand weg. Bewusst
+   über eine Klasse am body statt über JavaScript je Element: So ist die
+   Zuordnung im HTML nachlesbar, und ein neu hinzugefügtes Feld muss nur
+   ausgezeichnet werden, nicht auch noch irgendwo eingetragen. */
+body.einfach .adv{ display:none !important; }
+
+/* Überschrift über einer Knopfreihe. Klein und ruhig — sie soll die Reihe
+   benennen, nicht mit ihr um Aufmerksamkeit streiten. */
+.gruppen-titel{
+  margin:10px 0 4px;
+  font-size:11px;
+  color:var(--muted, #8b93a7);
+  letter-spacing:.3px;
+}
+#panelTop .gruppen-titel:first-of-type{ margin-top:4px; }
+
+/* Die Rolle steht klein hinter dem Namen. Der Name ist frei wählbar, die Rolle
+   folgt der Position — so sieht man ohne Nachlesen, welcher Knopf „du" ist. */
+#figureButtons .rolle{
+  font-size:10px;
+  opacity:.55;
+  font-weight:normal;
+}
+
+/* Umrissen statt gefüllt. Direkt darüber steht die Rollenwahl in derselben
+   grünen Füllung, und beide Reihen sehen von weitem gleich aus — genau die
+   Verwechslung, vor der die Beschriftung im HTML warnt. Die Rollenwahl
+   entscheidet, wessen Gesicht im Stream steht; diese hier nur, was das Panel
+   gerade bearbeitet. Weniger Gewicht ist also nicht Geschmack, sondern die
+   Rangfolge der beiden. */
+#figureButtons button.active{
+  background:transparent;
+  color:var(--accent2);
+  border-color:var(--accent2);
+}
+
+/* Eine Figur, die die Ansicht gerade ausblendet, ist nicht einstellbar. */
+#figureButtons button:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
+/* Ablegefläche für Animationsdateien. Der gestrichelte Rahmen sagt „hier darf
+   etwas hinein", bevor man es probiert hat. */
+#animDrop{
+  border:1px dashed var(--line);
+  border-radius:6px;
+  padding:8px;
+  margin-top:8px;
+  transition:border-color .12s, background .12s;
+}
+#animDrop.drueber{
+  border-color:var(--accent);
+  background:rgba(247,147,30,.10);
+}
+#animDrop.arbeitet{ opacity:.7; }
+#animDrop .hint{ margin:6px 0 0; }
+
+/* `hidden` galt bisher nur für Panel und Warnfeld, war also keine Regel, sondern
+   zwei Sonderfälle — wer die Klasse anderswo vergab, bekam nichts. Jetzt gilt sie
+   allgemein; die beiden Zeilen darüber sind damit nur noch genauer formuliert. */
+/* Die Vorschau der Charakterdatei benutzt denselben Kasten wie die Antwort, darf
+   aber nicht das halbe Panel einnehmen: Ein Briefing sind schnell hundert Zeilen,
+   und darunter liegen die Knöpfe, mit denen man es ausprobiert. */
+#aiPersonaPreview{
+  max-height:220px;
+  overflow-y:auto;
+  font-size:11px;
+  border-left-color:var(--muted);
+}
+
+.hidden{ display:none; }
+
+/* Der Fuss des Panels: Beenden, abgesetzt vom Rest. Eine Trennlinie und Abstand
+   darueber, damit er nicht wie der naechste Knopf einer Einstellung aussieht. */
+#panelFuss{
+  margin-top:22px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+#panelFuss button.danger{
+  color:var(--muted);
+  border-color:var(--line);
+}
+/* Rot erst beim Zeigen: Ein dauerhaft roter Knopf zieht den Blick auf sich, und
+   das ist genau das Falsche fuer den einen Knopf, den man nicht treffen will. */
+#panelFuss button.danger:hover{
+  color:var(--danger);
+  border-color:var(--danger);
+  background:rgba(255,92,92,.10);
+}
+
+/* Beenden darf bei offenem Panel nicht darunter verschwinden. Das Panel liegt
+   rechts und ueber der Leiste; die Ziehflaeche schob den Knopf genau dorthin.
+   Jetzt steht er vor ihr und bleibt im sichtbaren Teil links. */
+body.panel-open #tbQuit{ order:-2; }
+
+/* Luft unter dem letzten Abschnitt, damit der nicht am Fensterrand klebt. */
+#panel section:last-of-type{ padding-bottom:14px; }

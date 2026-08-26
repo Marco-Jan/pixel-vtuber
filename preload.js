@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('vtuber', {
   listSprites: () => ipcRenderer.invoke('sprites:list'),
   spriteFolder: () => ipcRenderer.invoke('sprites:folder'),
   openSpriteFolder: () => ipcRenderer.invoke('sprites:openFolder'),
+  // Figuren hinzufuegen: aussuchen und in den Ordner kopieren lassen.
+  spriteChoose: () => ipcRenderer.invoke('sprites:choose'),
+  spriteAdd: (pfade) => ipcRenderer.invoke('sprites:add', pfade),
 
   // Animationen aus Dateien. `animAdd` läuft ein bis zwei Minuten — solange
   // meldet `onAnimFortschritt`, woran Blender gerade ist.

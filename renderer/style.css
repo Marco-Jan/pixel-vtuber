@@ -508,19 +508,25 @@ body.einfach .adv{ display:none !important; }
 
 /* Ablegefläche für Animationsdateien. Der gestrichelte Rahmen sagt „hier darf
    etwas hinein", bevor man es probiert hat. */
-#animDrop{
+/* Ablegeflaechen: fuer Animationen und fuer Figuren dieselbe Sprache. Der
+   gestrichelte Rand sagt 'hier darf etwas hinein', ohne dass es dastehen
+   muesste. */
+#animDrop, #figDrop{
   border:1px dashed var(--line);
   border-radius:6px;
   padding:8px;
   margin-top:8px;
   transition:border-color .12s, background .12s;
 }
-#animDrop.drueber{
+#animDrop.drueber, #figDrop.drueber{
   border-color:var(--accent);
   background:rgba(247,147,30,.10);
 }
-#animDrop.arbeitet{ opacity:.7; }
-#animDrop .hint{ margin:6px 0 0; }
+#animDrop.arbeitet, #figDrop.arbeitet{ opacity:.7; }
+#animDrop .hint, #figDrop .hint{ margin:6px 0 0; }
+/* Der Knopf im Kasten sitzt schon in einem Rahmen - ein zweiter Abstand
+   daruber liesse die Flaeche auseinanderfallen. */
+#figDrop button.wide{ margin-top:0; }
 
 /* `hidden` galt bisher nur für Panel und Warnfeld, war also keine Regel, sondern
    zwei Sonderfälle — wer die Klasse anderswo vergab, bekam nichts. Jetzt gilt sie

@@ -3028,6 +3028,74 @@ async function animUebernehmen(pfade){
   }
 }
 
+// Figuren hinzufuegen - ziehen oder aussuchen.
+//
+// Vorher fuehrte der einzige Weg ueber den Explorer nach '%APPDATA%', einen
+// Ordner, den Windows versteckt. Der Knopf dorthin lag zudem in einem Block, der
+// bei einer 3D-Figur verschwindet: Wer ein Modell benutzte, kam gar nicht hin.
+async function figurUebernehmen(pfade){
+  if(!bridge || !bridge.spriteAdd || !pfade || !pfade.length) return;
+  const kasten = $('figDrop');
+  if(kasten) kasten.classList.add('arbeitet');
+  setStatus('figStatus', 'wird kopiert ...', '');
+  try{
+    const r = await bridge.spriteAdd(pfade);
+    await refreshAll();
+
+    if(r.gut && r.gut.length){
+      // Gleich auswaehlen, sonst muss man die Figur nach dem Hinzufuegen noch
+      // suchen - und genau dieser Schritt ist der, an dem man haengenbleibt.
+      const drei = r.gut.find(n => /\.(glb|gltf|vrm)$/i.test(n));
+      if(drei){
+        cur().kind = '3d';
+        cur().model = drei;
+        save();
+        buildModelControls();
+        const f = selected();
+        if(f){ f.modelFor = null; await ensureModel(f, true); buildPoseControls(); }
+      }
+      setStatus('figStatus', r.gut.join(', ') + (r.gut.length === 1 ? ' ist da' : ' sind da')
+                             + (drei ? ' und ausgewaehlt.' : '. Unten zuordnen, welches Bild welche Rolle hat.'), 'ok');
+    }
+    if(r.schlecht && r.schlecht.length){
+      setStatus('figStatus', r.schlecht.join(' | '), 'err');
+    }
+  }catch(err){
+    setStatus('figStatus', errText(err), 'err');
+  }finally{
+    if(kasten) kasten.classList.remove('arbeitet');
+  }
+}
+
+function wireFigurImport(){
+  const kasten = $('figDrop'), knopf = $('figAdd');
+  if(!kasten || !knopf || !bridge) return;
+
+  knopf.addEventListener('click', async () => {
+    if(!bridge.spriteChoose) return;
+    const pfade = await bridge.spriteChoose();
+    if(pfade && pfade.length) figurUebernehmen(pfade);
+  });
+
+  const an  = e => { e.preventDefault(); e.stopPropagation(); kasten.classList.add('drueber'); };
+  const aus = e => { e.preventDefault(); e.stopPropagation(); kasten.classList.remove('drueber'); };
+  kasten.addEventListener('dragenter', an);
+  kasten.addEventListener('dragover', an);
+  kasten.addEventListener('dragleave', aus);
+  kasten.addEventListener('drop', e => {
+    aus(e);
+    const dateien = [...(e.dataTransfer ? e.dataTransfer.files : [])];
+    const pfade = dateien.map(f => (bridge.filePath ? bridge.filePath(f) : '')).filter(Boolean);
+    // Ein Drop, aus dem kein Pfad wird, darf nicht stumm verpuffen - sonst haelt
+    // man die Flaeche fuer kaputt.
+    if(!pfade.length){
+      setStatus('figStatus', 'Aus dieser Ablage kam kein Dateipfad - nimm den Knopf.', 'err');
+      return;
+    }
+    figurUebernehmen(pfade);
+  });
+}
+
 function wireAnimImport(){
   const kasten = $('animDrop'), knopf = $('animAdd');
   if(!kasten || !knopf || !bridge) return;
@@ -4626,6 +4694,12 @@ function wireUi(){
     if(bridge) attempt('Sprite-Ordner öffnen', () => bridge.openSpriteFolder());
   });
 
+  // Derselbe Knopf noch einmal weiter oben. Der untere sitzt in einem Block, der
+  // bei einer 3D-Figur ganz verschwindet - dann kaeme man gar nicht mehr an den
+  // Ordner, obwohl auch Modelle dort liegen.
+  const obenAuf = $('openSpritesTop');
+  if(obenAuf) obenAuf.addEventListener('click', () => bridge && bridge.openSpriteFolder());
+
   $('resetRoles').addEventListener('click', async () => {
     cur().roles = structuredClone(DEFAULT_ROLES);
     save();
@@ -4762,6 +4836,7 @@ function wireUi(){
     if(ok === false) setStatus('animStatus', 'Die Anleitung (renderer/anleitung.html) fehlt.', 'warn');
   });
   wireAnimImport();
+  wireFigurImport();
   $('advToggle').addEventListener('click', () => {
     settings.uiAdvanced = !settings.uiAdvanced;
     applyAdvanced();

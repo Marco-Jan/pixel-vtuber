@@ -1886,6 +1886,62 @@ function startApp(){
       .sort((a, b) => a.file.localeCompare(b.file));
   });
 
+  // Figuren hinzufuegen, ohne den Explorer zu bemuehen.
+  //
+  // Vorher fuehrte der einzige Weg ueber '%APPDATA%' - einen Ordner, den Windows
+  // versteckt und den man nur findet, wenn man weiss, dass es ihn gibt. Der Knopf
+  // dorthin lag ausserdem in einem Block, der bei einer 3D-Figur ganz
+  // verschwindet: Wer ein Modell benutzte, kam gar nicht mehr hin.
+  //
+  // Kopiert wird, nicht verknuepft. Eine Figur, die verschwindet, weil jemand
+  // seinen Download-Ordner aufraeumt, waere die schlechtere Ueberraschung.
+  ipcMain.handle('sprites:choose', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Figur hinzufuegen',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        {name: 'Figuren', extensions: ['glb', 'gltf', 'vrm', 'png', 'webp', 'gif']},
+        {name: '3D-Modelle', extensions: ['glb', 'gltf', 'vrm']},
+        {name: 'Pixelart', extensions: ['png', 'webp', 'gif']}
+      ]
+    });
+    return r.canceled ? [] : r.filePaths;
+  });
+
+  ipcMain.handle('sprites:add', (_e, pfade) => {
+    const gut = [], schlecht = [];
+    fs.mkdirSync(USER_SPRITES, {recursive: true});
+
+    for(const p of (Array.isArray(pfade) ? pfade : [])){
+      const name = path.basename(String(p || ''));
+      if(!name){ continue; }
+      if(!/\.(png|webp|gif|glb|gltf|vrm)$/i.test(name)){
+        schlecht.push(name + ' - nur PNG, WEBP, GIF, GLB, GLTF und VRM');
+        continue;
+      }
+      try{
+        const st = fs.statSync(p);
+        if(!st.isFile()){ schlecht.push(name + ' - ist keine Datei'); continue; }
+      }catch(e){ schlecht.push(name + ' - nicht lesbar'); continue; }
+
+      // Gleichnamiges nicht stillschweigend ueberschreiben: Wer zweimal
+      // 'model.glb' hineinlegt, meint selten dieselbe Figur.
+      let ziel = path.join(USER_SPRITES, name);
+      if(fs.existsSync(ziel)){
+        const stamm = name.replace(/\.[^.]*$/, ''), endung = path.extname(name);
+        let n = 2;
+        while(fs.existsSync(ziel = path.join(USER_SPRITES, stamm + '-' + n + endung))) n++;
+      }
+      try{
+        fs.copyFileSync(p, ziel);
+        gut.push(path.basename(ziel));
+      }catch(e){
+        schlecht.push(name + ' - ' + (e && e.message ? e.message : e));
+      }
+    }
+    return {gut, schlecht, ordner: USER_SPRITES};
+  });
+
   ipcMain.handle('sprites:folder', () => USER_SPRITES);
   ipcMain.handle('sprites:openFolder', () => shell.openPath(USER_SPRITES));
 
